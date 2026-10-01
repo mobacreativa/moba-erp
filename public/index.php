@@ -9,6 +9,11 @@ function e(mixed $value): string { return htmlspecialchars(is_scalar($value) ? (
 function field(array $input, string $key): string { return isset($input[$key]) && is_string($input[$key]) ? $input[$key] : ''; }
 function redirect(): never { header('Location: /'); exit; }
 
+if (!in_array(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), ['/', '/index.php'], true)) {
+    http_response_code(404);
+    exit('Página no encontrada.');
+}
+
 header('Content-Type: text/html; charset=utf-8');
 header("Content-Security-Policy: default-src 'self'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 header('X-Content-Type-Options: nosniff');
