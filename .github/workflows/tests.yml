@@ -1,0 +1,43 @@
+name: PHP and MariaDB
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test-only
+          MARIADB_DATABASE: moba_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+      - name: Syntax
+        run: find app public config bin tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Unit tests
+        run: php tests/unit.php
+      - name: Import schema and integration tests
+        env:
+          MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
+          MOBA_TEST_USER: root
+          MOBA_TEST_PASSWORD: test-only
+        run: |
+          php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/schema.sql"));'
+          php tests/integration.php
+          php tests/configure.php
+      - name: HTTP authentication and customer flow
+        run: |
+          php -S 127.0.0.1:8080 -t public > /tmp/moba-php.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID"' EXIT
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ > /dev/null && break; sleep 1; done
+          python3 tests/web_flow.py

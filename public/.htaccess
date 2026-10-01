@@ -1,0 +1,12 @@
+Options -Indexes
+Require all granted
+DirectoryIndex index.php
+
+RewriteEngine On
+# Dominio previsto para esta instalación. El servidor PHP local ignora este archivo.
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://erp.mobacreativa.com%{REQUEST_URI} [R=302,L]
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
