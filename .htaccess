@@ -1,0 +1,3 @@
+# Protección adicional si se publica accidentalmente la raíz del proyecto.
+# Configurar siempre el DocumentRoot del subdominio en public/.
+Require all denied

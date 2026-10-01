@@ -1,0 +1,77 @@
+-- Importar una sola vez en una base vacía. No borra ni reemplaza tablas.
+CREATE TABLE customers (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(160) NOT NULL,
+ tax_id VARCHAR(40) NOT NULL DEFAULT '',
+ email VARCHAR(190) NOT NULL DEFAULT '',
+ phone VARCHAR(40) NOT NULL DEFAULT '',
+ address VARCHAR(500) NOT NULL DEFAULT '',
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ INDEX (name), INDEX (tax_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE brands (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(160) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE suppliers (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(160) NOT NULL,
+ email VARCHAR(190) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE colors (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ brand_id BIGINT UNSIGNED NOT NULL,
+ code VARCHAR(40) NOT NULL,
+ name VARCHAR(100) NOT NULL,
+ UNIQUE (brand_id, code), UNIQUE (id, brand_id),
+ FOREIGN KEY (brand_id) REFERENCES brands(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE sizes (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(40) NOT NULL UNIQUE,
+ sort_order INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE products (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ brand_id BIGINT UNSIGNED NOT NULL,
+ reference VARCHAR(80) NOT NULL,
+ name VARCHAR(190) NOT NULL,
+ UNIQUE (brand_id, reference), UNIQUE (id, brand_id),
+ FOREIGN KEY (brand_id) REFERENCES brands(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE product_variants (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ brand_id BIGINT UNSIGNED NOT NULL,
+ product_id BIGINT UNSIGNED NOT NULL,
+ color_id BIGINT UNSIGNED NOT NULL,
+ size_id BIGINT UNSIGNED NOT NULL,
+ UNIQUE (product_id, color_id, size_id),
+ FOREIGN KEY (product_id, brand_id) REFERENCES products(id, brand_id),
+ FOREIGN KEY (color_id, brand_id) REFERENCES colors(id, brand_id),
+ FOREIGN KEY (size_id) REFERENCES sizes(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE supplier_costs (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ variant_id BIGINT UNSIGNED NOT NULL,
+ supplier_id BIGINT UNSIGNED NOT NULL,
+ unit_cost DECIMAL(12,4) NOT NULL CHECK (unit_cost >= 0),
+ currency CHAR(3) NOT NULL DEFAULT 'EUR',
+ valid_from DATETIME(6) NOT NULL,
+ UNIQUE (variant_id, supplier_id, valid_from),
+ FOREIGN KEY (variant_id) REFERENCES product_variants(id),
+ FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE login_attempts (
+ ip_hash CHAR(64) PRIMARY KEY,
+ failures INT UNSIGNED NOT NULL DEFAULT 0,
+ last_attempt DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
