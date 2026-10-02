@@ -49,3 +49,25 @@ jobs:
           trap 'kill "$PID"' EXIT
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ > /dev/null && break; sleep 1; done
           python3 tests/web_flow.py
+      - name: Browser dependencies
+        if: matrix.php == '8.2'
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Browser workflow and PDF
+        if: matrix.php == '8.2'
+        env:
+          MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
+        run: |
+          php -r '$db=new PDO(getenv("MOBA_TEST_DSN"),"root","test-only");$db->exec("DELETE FROM login_attempts");'
+          php -S 127.0.0.1:8080 -t public > /tmp/moba-php.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID"' EXIT
+          node tests/browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.php == '8.2'
+        with:
+          name: browser-validation
+          path: |
+            /tmp/moba-*.png
+            /tmp/moba-quote.pdf

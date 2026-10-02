@@ -78,7 +78,7 @@ function quoteEditor(){
 }
 function configure(){
   captureDraft();calculated=null;
-  $('fields').innerHTML=`<h2>Configurar producto</h2><form></form><div class="fields">${select('product_id','Producto',data.product.filter(x=>x.active).map(x=>[x.id,(x.reference?x.reference+' · ':'')+x.name]))}</div><div id="configuration"></div><p id="formerror" class="error" hidden></p>`;
+  $('fields').innerHTML=`<h2>Configurar producto</h2><div class="fields">${select('product_id','Producto',data.product.filter(x=>x.active).map(x=>[x.id,(x.reference?x.reference+' · ':'')+x.name]))}</div><div id="configuration"></div><p id="formerror" class="error" hidden></p>`;
   editing={kind:'configuration'};$('editor').showModal();$('editform').querySelector('button[type=submit]').textContent='Añadir al presupuesto';
 }
 function productConfiguration(){

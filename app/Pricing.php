@@ -60,12 +60,17 @@ final class Pricing
         if ($cost !== null) { $cost = self::number($cost, 'Coste') * $factor; }
         $breakdown = ['product' => $cost, 'factor' => $factor, 'personalization' => []];
         $saleAdd = 0.0;
+        $costAdd = 0.0;
         $costKnown = $cost !== null;
         $zones = [];
+        $zoneKeys = [];
         $technical = [];
         foreach ($input['personalizations'] ?? [] as $p) {
             if (!is_array($p)) { throw new InvalidArgumentException('Personalización incorrecta.'); }
             $technique = (string) ($p['technique'] ?? '');
+            $zoneKey = $technique . ':' . (string)($p['zone'] ?? '');
+            if (isset($zoneKeys[$zoneKey])) { throw new InvalidArgumentException('Selecciona un único tamaño por técnica y zona.'); }
+            $zoneKeys[$zoneKey] = true;
             if (!in_array($technique, $product['techniques'] ?? [], true)) { throw new InvalidArgumentException('Esta técnica no está permitida para el producto.'); }
             $r = self::rate($rates, $technique, (string) ($p['zone'] ?? ''), (string) ($p['size'] ?? ''), $quantity);
             $multiplier = match ($r['unit'] ?? 'unit') {
@@ -77,6 +82,7 @@ final class Pricing
             };
             $value = self::number($r['amount'] ?? null, 'Tarifa') * $multiplier;
             if (($r['basis'] ?? '') === 'cost') {
+                $costAdd += $value;
                 if ($cost !== null) { $cost += $value; }
             } else {
                 $saleAdd += $value;
@@ -91,6 +97,7 @@ final class Pricing
         $setup = self::number($input['setup'] ?? 0, 'Preparación');
         $design = self::number($input['design'] ?? 0, 'Diseño');
         $supplements = self::number($input['supplements_total'] ?? 0, 'Suplementos');
+        $costAdd += $handling + ($setup + $design + $supplements) / $quantity;
         if ($cost !== null) { $cost += $handling + ($setup + $design + $supplements) / $quantity; }
         $margin = self::number($input['margin'] ?? $product['margin'] ?? 35, 'Margen', 1000);
         foreach ($product['margin_rules'] ?? [] as $rule) {
@@ -103,7 +110,7 @@ final class Pricing
         $manual = $input['price'] ?? '';
         $reference = $product['pvp'] ?? null;
         if ($manual !== '' && $manual !== null) { $price = self::number($manual, 'PVP manual'); }
-        elseif ($reference !== null && !$technical) { $price = self::number($reference, 'PVP catálogo') * $factor; }
+        elseif ($reference !== null) { $price = self::number($reference, 'PVP catálogo') * $factor + self::sale($costAdd, $margin, $mode) + $saleAdd; }
         elseif ($recommended !== null) { $price = $recommended; }
         else { throw new InvalidArgumentException('Faltan costes para calcular el precio. Indica un PVP manual o completa costes.'); }
         $price = round($price, 2);
