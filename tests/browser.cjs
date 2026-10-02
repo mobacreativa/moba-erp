@@ -32,6 +32,8 @@ const assert=require('node:assert/strict');
  await dialog.getByLabel('Browser XL',{exact:true}).check();await save();
  await create('Tarifas y costes',[['Nombre','Browser DTF'],['Técnica (DTF, Bordado, Láser…)','DTF'],['Zona (Pecho, Espalda, Manga derecha…)','Pecho'],['Tamaño / formato','8x8'],['Importe sin IVA','1.2']]);await save();
  await nav.getByRole('button',{name:'Nuevo presupuesto',exact:true}).click();
+ console.log('New quote UI:',await page.locator('#content').innerText(),'Notice:',await page.locator('#notice').innerText(),'Errors:',errors);
+ await page.screenshot({path:'/tmp/moba-before-quote.png',fullPage:true});
  await page.getByLabel('Cliente',{exact:true}).selectOption({label:'Integration customer'});
  await page.getByRole('button',{name:'+ Configurar producto'}).click();
  await dialog.getByLabel('Producto',{exact:true}).selectOption({label:'UI-001 · Browser garment'});

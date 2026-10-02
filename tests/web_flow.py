@@ -1,5 +1,6 @@
 """Pruebas HTTP con datos desechables; ejecutar solo en CI/local de pruebas."""
 import html
+import json
 import http.cookiejar
 import re
 import urllib.error
@@ -49,8 +50,27 @@ status, page, _ = request(client, path='?edit=' + customer_id)
 assert f'name="id" value="{customer_id}"' in page
 status, page, _ = request(client, {'action': 'save_customer', 'csrf': new_csrf, 'id': customer_id, 'name': 'HTTP updated'})
 assert 'Cliente actualizado.' in page and 'HTTP updated' in page
+status, payload, _ = request(client, path='?api=load')
+state = json.loads(payload)['data']
+assert status == 200 and state['csrf'] == new_csrf
+status, _, _ = request(client, {'csrf':'wrong','payload':'{}'}, '?api=save')
+assert status == 403
+def api(action, payload):
+    status, body, _ = request(client, {'csrf':new_csrf,'payload':json.dumps(payload)}, '?api='+action)
+    return status, json.loads(body)
+status, payload = api('save', {'kind':'product','data':{'name':'API product','cost':2,'pvp':7}})
+assert status == 200 and payload['ok']
+product = payload['data']
+status, payload = api('calculate', {'product_id':product['id'],'quantity':-3})
+assert status == 422 and not payload['ok']
+status, payload = api('save_quote', {'customer_id':int(customer_id),'date':'2026-10-03','total':0,'lines':[{'product_id':product['id'],'quantity':3,'total':0}]})
+assert status == 200 and payload['data']['total'] == 25.41
+status, payload = api('save', {'kind':'quote','data':{'name':'Forged','total':0}})
+assert status == 422
 status, page, _ = request(client, {'action': 'logout', 'csrf': new_csrf})
 assert 'name="username"' in page and 'HTTP updated' not in page
+status, payload, _ = request(client, path='?api=load')
+assert status == 401 and 'customers' not in payload
 for _ in range(6):
     # Cambiar la cookie no debe evitar el contador de intentos por IP.
     client = browser()
