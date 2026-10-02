@@ -47,6 +47,7 @@ $query = substr(field($_GET, 'q'), 0, 160);
 try {
     $db = new PDO($config['dsn'], $config['user'], $config['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
     $customers = new Customers($db);
+    if (isset($_GET['api'])) { require dirname(__DIR__) . '/app/api.php'; }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!hash_equals($_SESSION['csrf'], field($_POST, 'csrf'))) {
             http_response_code(403);
@@ -101,6 +102,10 @@ if (!empty($_SESSION['authenticated']) && isset($customers)) {
     try { $rows = $customers->search($query); }
     catch (Throwable $exception) { http_response_code(503); $error = 'No se pueden cargar los clientes.'; }
 }
+if (!empty($_SESSION['authenticated']) && field($_GET,'view') === 'erp') {
+    require dirname(__DIR__) . '/app/erp.php';
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clientes · MOBA ERP</title><link rel="stylesheet" href="/app.css"></head>
@@ -112,7 +117,7 @@ if (!empty($_SESSION['authenticated']) && isset($customers)) {
 <?php if (empty($_SESSION['authenticated'])): ?>
 <section class="login"><p class="eyebrow">MOBA CREATIVA</p><h1>Tu taller, organizado.</h1><p>Acceso privado a la gestión de clientes.</p><form method="post"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><label>Usuario<input name="username" required autocomplete="username" maxlength="80"></label><label>Contraseña<input type="password" name="password" required autocomplete="current-password"></label><button>Entrar</button></form></section>
 <?php else: ?>
-<p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
+<p><a href="/?view=erp">Abrir presupuestos y catálogo →</a></p><p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
 <div class="layout"><section><form class="search" method="get"><label>Buscar por nombre o NIF<input name="q" value="<?= e($query) ?>" maxlength="160" placeholder="Nombre o NIF"></label><button>Buscar</button></form>
 <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Contacto</th><th></th></tr></thead><tbody>
 <?php foreach ($rows as $row): ?><tr><td><strong><?= e($row['name']) ?></strong><small><?= e($row['tax_id']) ?></small></td><td><?= e($row['email']) ?><small><?= e($row['phone']) ?></small></td><td><a href="/?edit=<?= e($row['id']) ?>">Editar<span class="sr-only"> <?= e($row['name']) ?></span></a></td></tr><?php endforeach ?>

@@ -5,6 +5,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.3']
     services:
       mariadb:
         image: mariadb:10.11
@@ -19,12 +22,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: pdo_mysql
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring
       - name: Syntax
         run: find app public config bin tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Unit tests
-        run: php tests/unit.php
+        run: |
+          php tests/unit.php
+          php tests/pricing.php
+          node --check public/erp.js
       - name: Import schema and integration tests
         env:
           MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
@@ -33,6 +39,8 @@ jobs:
         run: |
           php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/schema.sql"));'
           php tests/integration.php
+          php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/002_erp.sql"));'
+          php tests/erp_integration.php
           php tests/configure.php
       - name: HTTP authentication and customer flow
         run: |
