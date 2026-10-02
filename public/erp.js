@@ -18,7 +18,7 @@ function name(kind,id){return find(kind,id)?.name||'—'}
 const button=(text,action,id='',extra='')=>`<button type="button" data-action="${action}" data-id="${esc(id)}" ${extra}>${esc(text)}</button>`;
 const input=(key,label,value='',type='text',extra='')=>`<label>${esc(label)}<input name="${key}" type="${type}" value="${esc(value)}" ${extra}></label>`;
 const area=(key,label,value='')=>`<label class="full">${esc(label)}<textarea name="${key}" rows="3">${esc(value)}</textarea></label>`;
-function select(key,label,options,value='',blank=true){return `<label>${esc(label)}<select name="${key}">${blank?'<option value="">Seleccionar…</option>':''}${options.map(([id,text])=>`<option value="${esc(id)}" ${String(value)===String(id)?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`}
+function select(key,label,options,value='',blank=true){return `<label>${esc(label)}<select name="${key}" aria-label="${esc(label)}">${blank?'<option value="">Seleccionar…</option>':''}${options.map(([id,text])=>`<option value="${esc(id)}" ${String(value)===String(id)?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`}
 const choices=(kind)=>data[kind].filter(x=>x.active).map(x=>[x.id,x.name]);
 function chips(key,items,selected=[]){return `<div class="chips">${items.map(x=>`<label><input name="${key}" type="checkbox" value="${esc(x.id)}" ${selected.includes(x.id)?'checked':''}>${esc(x.code?x.code+' · '+x.name:x.name)}</label>`).join('')}</div>`}
 function show(target){
