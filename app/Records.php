@@ -9,7 +9,7 @@ use RuntimeException;
 /** Versioned domain documents: one record per entity and append-only historical revisions. */
 final class Records
 {
-    public const KINDS = ['product','supplier','brand','color','size','rate','quote','settings','template'];
+    public const KINDS = ['product','supplier','brand','color','size','rate','quote','settings','template','work_order'];
     public function __construct(private PDO $db) {}
 
     public function all(string $kind): array
@@ -80,7 +80,7 @@ final class Records
 
     public function validate(string $kind, array $data): array
     {
-        if ($kind === 'quote') { return $data; } // Only Quotes may write this kind through the API.
+        if (in_array($kind,['quote','work_order'],true)) { return $data; } // Only Quotes may write this kind through the API.
         if (!is_string($data['name'] ?? null) || trim($data['name']) === '' || mb_strlen($data['name']) > 190) { throw new InvalidArgumentException('Indica un nombre de hasta 190 caracteres.'); }
         $data['name'] = trim($data['name']);
         $data['active'] = (bool) ($data['active'] ?? true);

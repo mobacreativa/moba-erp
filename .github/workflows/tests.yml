@@ -31,6 +31,7 @@ jobs:
           php tests/unit.php
           php tests/pricing.php
           node --check public/erp.js
+          node --check public/team.js
       - name: Import schema and integration tests
         env:
           MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
@@ -40,6 +41,8 @@ jobs:
           php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/schema.sql"));'
           php tests/integration.php
           php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/002_erp.sql"));'
+          php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/003_users.sql"));'
+          php tests/team.php
           php tests/erp_integration.php
           php tests/configure.php
       - name: HTTP authentication and customer flow

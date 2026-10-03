@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/Customers.php';
 require dirname(__DIR__) . '/app/Auth.php';
+require dirname(__DIR__) . '/app/Users.php';
 use Moba\Customers;
 use Moba\Auth;
 
@@ -46,6 +47,9 @@ $rows = [];
 $query = substr(field($_GET, 'q'), 0, 160);
 try {
     $db = new PDO($config['dsn'], $config['user'], $config['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
+    $users = new \Moba\Users($db,$config);
+    $actor = $users->current($_SESSION);
+    if (!$actor) { unset($_SESSION['authenticated']); }
     $customers = new Customers($db);
     if (isset($_GET['api'])) { require dirname(__DIR__) . '/app/api.php'; }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -65,17 +69,20 @@ try {
                 http_response_code(429);
                 throw new InvalidArgumentException('Demasiados intentos. Espera 15 minutos antes de volver a intentarlo.');
             }
-            if (!Auth::verify(field($_POST, 'username'), field($_POST, 'password'), $config)) {
+            if (!($identity = $users->login(field($_POST, 'username'), field($_POST, 'password')))) {
                 throw new InvalidArgumentException('Usuario o contraseña incorrectos.');
             }
             $db->prepare('DELETE FROM login_attempts WHERE ip_hash=?')->execute([$ip]);
             session_regenerate_id(true);
             $_SESSION['authenticated'] = true;
+            $_SESSION['user_id'] = (int)$identity['id'];
+            $_SESSION['user_version'] = (int)$identity['session_version'];
             $_SESSION['csrf'] = bin2hex(random_bytes(32));
             redirect();
         }
         if (empty($_SESSION['authenticated'])) { http_response_code(403); throw new InvalidArgumentException('Inicia sesión para continuar.'); }
         if ($action === 'logout') { $_SESSION = []; session_destroy(); redirect(); }
+        \Moba\Users::allow($actor,['admin','sales']);
         if ($action === 'save_customer') {
             $idText = field($_POST, 'id');
             $id = $idText === '' ? null : filter_var($idText, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -86,6 +93,7 @@ try {
             redirect();
         }
     }
+    if ($actor && ($actor['role']==='production' || field($_GET,'view')==='team')) { require dirname(__DIR__).'/app/team.php';exit; }
     if (!empty($_SESSION['authenticated']) && isset($_GET['edit'])) {
         $id = filter_var(field($_GET, 'edit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         $editing = $id === false ? null : $customers->find($id);
@@ -98,10 +106,11 @@ try {
     http_response_code(503);
     $error = 'No se puede acceder a los datos. Revisa la configuración y la base de datos.';
 }
-if (!empty($_SESSION['authenticated']) && isset($customers)) {
+if (!empty($_SESSION['authenticated']) && isset($customers) && ($actor['role'] ?? '')!=='production') {
     try { $rows = $customers->search($query); }
     catch (Throwable $exception) { http_response_code(503); $error = 'No se pueden cargar los clientes.'; }
 }
+if (!empty($_SESSION['authenticated']) && ($actor['role'] ?? '')==='production') { require dirname(__DIR__).'/app/team.php';exit; }
 if (!empty($_SESSION['authenticated']) && field($_GET,'view') === 'erp') {
     require dirname(__DIR__) . '/app/erp.php';
     exit;

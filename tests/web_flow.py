@@ -67,6 +67,38 @@ status, payload = api('save_quote', {'customer_id':int(customer_id),'date':'2026
 assert status == 200 and payload['data']['total'] == 25.41
 status, payload = api('save', {'kind':'quote','data':{'name':'Forged','total':0}})
 assert status == 422
+# Exercise role boundaries through real HTTP routes, not just service methods.
+status, result = api('team_user', {'username':'http-worker','name':'HTTP Worker','password':'http-worker-password','role':'production','active':True})
+assert status == 200 and 'password_hash' not in json.dumps(result)
+worker = result['data']
+status, result = api('team_order', {'name':'HTTP assignment','assignee_id':worker['id'],'instructions':'Production only'})
+assert status == 200
+order = result['data']
+wc = browser()
+_, wp, _ = request(wc)
+status, wp, _ = request(wc, {'action':'login','csrf':token(wp),'username':'http-worker','password':'http-worker-password'})
+assert status == 200 and 'Nuevo cliente' not in wp and 'team.js' in wp
+wt = token(wp)
+for endpoint in ['load','history&kind=quote&id='+order['id']]:
+    status, body, _ = request(wc,path='?api='+endpoint)
+    assert status == 403 and 'customers' not in body
+for endpoint, body in [('save_customer', None)]:
+    status, wp, _ = request(wc,{'action':endpoint,'csrf':wt,'name':'Unauthorized customer'})
+    assert status == 403 and 'Nuevo cliente' not in wp
+for endpoint in ['save','save_quote','team_user','team_order']:
+    status, _, _ = request(wc,{'csrf':wt,'payload':'{}'},'?api='+endpoint)
+    assert status == 403, endpoint
+status, body, _ = request(wc,path='?api=team_load')
+team=json.loads(body)['data']
+assert status == 200 and len(team['orders']) == 1 and team['users'] == [] and team['quotes'] == []
+status, body, _ = request(wc,{'csrf':wt,'payload':json.dumps({'id':order['id'],'version':order['version'],'status':'completed','progress':'Ready'})},'?api=team_progress')
+assert status == 200
+worker['active']=False
+status, _ = api('team_user',worker)
+assert status == 200
+status, _, _ = request(wc,path='?api=team_load')
+assert status == 401
+
 status, page, _ = request(client, {'action': 'logout', 'csrf': new_csrf})
 assert 'name="username"' in page and 'HTTP updated' not in page
 status, payload, _ = request(client, path='?api=load')
