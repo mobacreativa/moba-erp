@@ -47,7 +47,7 @@ final class Users
         if (!preg_match('/^[a-zA-Z0-9_.@-]{3,80}$/D',$username) || strcasecmp($username,$this->config['admin_username'])===0) { throw new InvalidArgumentException('Elige otro usuario (3–80 letras, números, punto, guion, @ o _).'); }
         if ($name==='' || mb_strlen($name)>190 || !in_array($role,['admin','sales','production'],true)) { throw new InvalidArgumentException('Nombre o rol no válido.'); }
         $active=!empty($input['active']);
-        if ($id===(int)$actor['id'] && (!$active || $role!=='admin')) { throw new InvalidArgumentException('No puedes quitarte tu acceso de administrador.'); }
+        if ($id>0 && $id===(int)$actor['id'] && (!$active || $role!=='admin')) { throw new InvalidArgumentException('No puedes quitarte tu acceso de administrador.'); }
         if (($id===0 || $password!=='') && (strlen($password)<12 || strlen($password)>72)) { throw new InvalidArgumentException('La contraseña debe tener entre 12 y 72 bytes.'); }
         $hash=$password!=='' ? password_hash($password,PASSWORD_DEFAULT) : null;
         try {
