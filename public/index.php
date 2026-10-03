@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/Customers.php';
 require dirname(__DIR__) . '/app/Auth.php';
+require dirname(__DIR__) . '/app/Users.php';
 use Moba\Customers;
 use Moba\Auth;
 
@@ -46,7 +47,11 @@ $rows = [];
 $query = substr(field($_GET, 'q'), 0, 160);
 try {
     $db = new PDO($config['dsn'], $config['user'], $config['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
+    $users = new \Moba\Users($db,$config);
+    $actor = $users->current($_SESSION);
+    if (!$actor) { unset($_SESSION['authenticated']); }
     $customers = new Customers($db);
+    if (isset($_GET['api'])) { require dirname(__DIR__) . '/app/api.php'; }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!hash_equals($_SESSION['csrf'], field($_POST, 'csrf'))) {
             http_response_code(403);
@@ -64,17 +69,20 @@ try {
                 http_response_code(429);
                 throw new InvalidArgumentException('Demasiados intentos. Espera 15 minutos antes de volver a intentarlo.');
             }
-            if (!Auth::verify(field($_POST, 'username'), field($_POST, 'password'), $config)) {
+            if (!($identity = $users->login(field($_POST, 'username'), field($_POST, 'password')))) {
                 throw new InvalidArgumentException('Usuario o contraseña incorrectos.');
             }
             $db->prepare('DELETE FROM login_attempts WHERE ip_hash=?')->execute([$ip]);
             session_regenerate_id(true);
             $_SESSION['authenticated'] = true;
+            $_SESSION['user_id'] = (int)$identity['id'];
+            $_SESSION['user_version'] = (int)$identity['session_version'];
             $_SESSION['csrf'] = bin2hex(random_bytes(32));
             redirect();
         }
         if (empty($_SESSION['authenticated'])) { http_response_code(403); throw new InvalidArgumentException('Inicia sesión para continuar.'); }
         if ($action === 'logout') { $_SESSION = []; session_destroy(); redirect(); }
+        \Moba\Users::allow($actor,['admin','sales']);
         if ($action === 'save_customer') {
             $idText = field($_POST, 'id');
             $id = $idText === '' ? null : filter_var($idText, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -85,6 +93,7 @@ try {
             redirect();
         }
     }
+    if ($actor && ($actor['role']==='production' || field($_GET,'view')==='team')) { require dirname(__DIR__).'/app/team.php';exit; }
     if (!empty($_SESSION['authenticated']) && isset($_GET['edit'])) {
         $id = filter_var(field($_GET, 'edit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         $editing = $id === false ? null : $customers->find($id);
@@ -97,9 +106,14 @@ try {
     http_response_code(503);
     $error = 'No se puede acceder a los datos. Revisa la configuración y la base de datos.';
 }
-if (!empty($_SESSION['authenticated']) && isset($customers)) {
+if (!empty($_SESSION['authenticated']) && isset($customers) && ($actor['role'] ?? '')!=='production') {
     try { $rows = $customers->search($query); }
     catch (Throwable $exception) { http_response_code(503); $error = 'No se pueden cargar los clientes.'; }
+}
+if (!empty($_SESSION['authenticated']) && ($actor['role'] ?? '')==='production') { require dirname(__DIR__).'/app/team.php';exit; }
+if (!empty($_SESSION['authenticated']) && field($_GET,'view') === 'erp') {
+    require dirname(__DIR__) . '/app/erp.php';
+    exit;
 }
 ?>
 <!doctype html>
@@ -112,7 +126,7 @@ if (!empty($_SESSION['authenticated']) && isset($customers)) {
 <?php if (empty($_SESSION['authenticated'])): ?>
 <section class="login"><p class="eyebrow">MOBA CREATIVA</p><h1>Tu taller, organizado.</h1><p>Acceso privado a la gestión de clientes.</p><form method="post"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><label>Usuario<input name="username" required autocomplete="username" maxlength="80"></label><label>Contraseña<input type="password" name="password" required autocomplete="current-password"></label><button>Entrar</button></form></section>
 <?php else: ?>
-<p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
+<p><a href="/?view=erp">Abrir presupuestos y catálogo →</a></p><p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
 <div class="layout"><section><form class="search" method="get"><label>Buscar por nombre o NIF<input name="q" value="<?= e($query) ?>" maxlength="160" placeholder="Nombre o NIF"></label><button>Buscar</button></form>
 <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Contacto</th><th></th></tr></thead><tbody>
 <?php foreach ($rows as $row): ?><tr><td><strong><?= e($row['name']) ?></strong><small><?= e($row['tax_id']) ?></small></td><td><?= e($row['email']) ?><small><?= e($row['phone']) ?></small></td><td><a href="/?edit=<?= e($row['id']) ?>">Editar<span class="sr-only"> <?= e($row['name']) ?></span></a></td></tr><?php endforeach ?>

@@ -5,6 +5,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.3']
     services:
       mariadb:
         image: mariadb:10.11
@@ -19,12 +22,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: pdo_mysql
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring
       - name: Syntax
         run: find app public config bin tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Unit tests
-        run: php tests/unit.php
+        run: |
+          php tests/unit.php
+          php tests/pricing.php
+          node --check public/erp.js
+          node --check public/team.js
       - name: Import schema and integration tests
         env:
           MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
@@ -33,6 +40,10 @@ jobs:
         run: |
           php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/schema.sql"));'
           php tests/integration.php
+          php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/002_erp.sql"));'
+          php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/003_users.sql"));'
+          php tests/team.php
+          php tests/erp_integration.php
           php tests/configure.php
       - name: HTTP authentication and customer flow
         run: |
@@ -41,3 +52,25 @@ jobs:
           trap 'kill "$PID"' EXIT
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ > /dev/null && break; sleep 1; done
           python3 tests/web_flow.py
+      - name: Browser dependencies
+        if: matrix.php == '8.2'
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Browser workflow and PDF
+        if: matrix.php == '8.2'
+        env:
+          MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
+        run: |
+          php -r '$db=new PDO(getenv("MOBA_TEST_DSN"),"root","test-only");$db->exec("DELETE FROM login_attempts");'
+          php -S 127.0.0.1:8080 -t public > /tmp/moba-php.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID"' EXIT
+          node tests/browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.php == '8.2'
+        with:
+          name: browser-validation
+          path: |
+            /tmp/moba-*.png
+            /tmp/moba-quote.pdf

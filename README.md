@@ -1,35 +1,26 @@
 # MOBA ERP
 
-Primera base de la aplicación PHP + MariaDB/MySQL para MOBA Creativa.
-
-Estado: módulo de clientes (alta, consulta, edición y búsqueda), acceso de administrador y esquema inicial del catálogo. Presupuestos, cálculo textil/DTF, márgenes y despliegue están pendientes. No se han recuperado todavía las reglas detalladas del diseño anterior.
+Aplicación privada PHP/MariaDB para clientes, catálogo y presupuestos en erp.mobacreativa.com.
 
 ## Instalación
 
-Requisitos: PHP 8.3 o posterior con PDO MySQL y MariaDB 10.11/MySQL 8.0. No requiere Composer.
+PHP 8.2+ con PDO MySQL y mbstring; MariaDB 10.11+. No requiere Composer.
+Para una base nueva, importar database/schema.sql y después database/002_erp.sql.
+Para actualizar una instalación existente, importar únicamente database/002_erp.sql.
+Configurar config/local.php fuera del directorio público, conservar sus credenciales y servir exclusivamente public/ por HTTPS.
 
-1. Crear una base de datos vacía con codificación utf8mb4.
-2. Importar `database/schema.sql`.
-3. Copiar `config/local.example.php` a `config/local.php` y completar la conexión, el usuario administrador y el hash de contraseña.
-4. Generar el hash ejecutando `php bin/password.php` (lee la contraseña por entrada estándar; no la incluirá en el historial de comandos).
-5. Configurar el dominio para que su raíz sea exclusivamente `public/`. No publicar la raíz del repositorio.
-6. Servir por HTTPS y mantener `secure_cookie` en `true` en producción.
+El módulo de clientes permanece en /. El nuevo espacio de trabajo está en /?view=erp y utiliza la misma sesión.
 
-Desarrollo local: configurar `secure_cookie` en `false` y ejecutar `php -S 127.0.0.1:8080 -t public`. Abrir http://127.0.0.1:8080.
+## Funcionalidad
 
-Pruebas: `php tests/unit.php`. Integración: importar el esquema en una base desechable, configurar `MOBA_TEST_DSN`, `MOBA_TEST_USER`, `MOBA_TEST_PASSWORD` y ejecutar `php tests/integration.php`. CI comprueba sintaxis, validación e integración con MariaDB.
+Catálogo editable, marcas y proveedores separados, bibliotecas de colores/tallas, técnicas y tarifas por cantidad. Cálculos por unidad, superficie y personalización; distinción de margen sobre venta/recargo y coste/tarifa de venta. Presupuestos numerados, borradores, emisión, aceptación, rechazo, duplicado, histórico e impresión comercial/PDF sin costes internos.
 
-## Decisiones y pendientes
+Cada entidad se guarda como documento versionado en erp_records, con revisiones inmutables en erp_history. La actualización exige la versión leída para detectar ediciones concurrentes. Los clientes existentes se conservan. Las tablas normalizadas iniciales del catálogo se mantienen sin borrar datos; la interfaz nueva usa documentos versionados.
 
-- Marcas y proveedores son entidades distintas.
-- Colores pertenecen a una marca; no se incluyen códigos Roly sin el catálogo real.
-- Productos tienen variantes de color/talla y costes por proveedor fechados.
-- No hay tarifas, clientes ni credenciales de ejemplo en producción.
-- El acceso inicial es de un único administrador. Antes de abrirlo a más usuarios habrá que incorporar cuentas, roles y auditoría.
-- Confirmar cómo se calcula DTF (dimensiones, aprovechamiento, merma, aplicación y mínimos), margen frente a recargo, redondeo, impuestos y numeración antes de implementar presupuestos.
-- Los futuros presupuestos guardarán instantáneas de precios, costes y datos comerciales para conservar el histórico.
-- Pendientes: gestión visual del catálogo, presupuestos, motor de costes, exportación y despliegue en erp.mobacreativa.com.
+La importación disponible actualmente es CSV UTF-8 con vista previa. Los datos originales del prototipo se importan por separado y nunca se publican en GitHub. Los precios recuperados son referencias históricas y necesitan revisión comercial. No se presenta un coste desconocido como cero ni se calcula beneficio cuando faltan costes.
 
-Antes de producción, comprobar copia/restauración de base de datos y configuración HTTPS en el hosting. Este repositorio no despliega automáticamente.
+## Verificación
 
-Consulta `DEPLOY.md` para la instalación en Namecheap/cPanel y el subdominio privado.
+GitHub Actions ejecuta sintaxis, pruebas unitarias, integración MariaDB y HTTP en PHP 8.2/8.3. En PHP 8.2 también verifica el recorrido de navegador y genera un PDF y capturas con datos ficticios.
+
+No están implementados facturación, cobros, almacén ni producción. La importación XLSX directa, las plantillas reutilizables y los configuradores especializados por puntadas/serigrafía siguen pendientes; no deben presentarse como funciones terminadas.

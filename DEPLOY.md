@@ -1,16 +1,14 @@
 # Despliegue en Namecheap / cPanel
 
-Destino: `erp.mobacreativa.com`. No se ha desplegado todavía.
+Destino exclusivo: erp.mobacreativa.com. La versión inicial de clientes ya funciona con HTTPS y acceso privado.
 
-1. Subir el proyecto a una carpeta privada de la cuenta, por ejemplo `~/moba-erp`. No subir `.git`, `tests` ni `.github` al servidor.
-2. En Domains crear `erp.mobacreativa.com` con raíz `moba-erp/public`, sin compartir la raíz de la web principal. Si cPanel obliga a usar `public_html`, verificar que la raíz del proyecto queda bloqueada por `.htaccess` y solo `public/` es accesible.
-3. Comprobar dónde se gestiona el DNS antes de añadir el registro del subdominio. Mantener los registros de la web y del correo existentes.
-4. Activar el certificado SSL del subdominio y verificarlo antes de iniciar sesión. La aplicación exige HTTPS en producción.
-5. Seleccionar PHP 8.3 o posterior y activar PDO MySQL. Desactivar `display_errors` en producción y mantener logs fuera de la raíz pública.
-6. Crear base de datos y usuario dedicado; conceder acceso únicamente a esa base. Importar `database/schema.sql` una sola vez en la base vacía con phpMyAdmin.
-7. Copiar `config/local.example.php` a `config/local.php`. Completar el DSN, usuario y contraseña de base de datos, `admin_username` y `admin_password_hash`. Mantener `secure_cookie` en `true`. Usar permisos 600 para el archivo privado si el hosting lo admite.
-8. Generar el hash de administrador con `php bin/password.php` desde Terminal de cPanel. Introducir la contraseña allí, no en GitHub ni en el chat. No existe contraseña predeterminada ni alta pública.
-9. Verificar HTTPS, login incorrecto/correcto, cierre de sesión, alta y edición de un cliente de prueba, y que `/config/local.php`, `/database/schema.sql` y `/.git/config` no son accesibles.
-10. Configurar y comprobar restauración de copias de seguridad antes de introducir datos reales.
+## Actualización del catálogo y presupuestos
 
-Las credenciales y los datos reales nunca se añaden al repositorio. Para futuras actualizaciones, conservar `config/local.php` y la base de datos. No volver a importar el esquema sobre una base existente.
+1. Exportar la base mobaewow_erp con phpMyAdmin y guardar una copia privada de app/ y public/ fuera de public/.
+2. Importar database/002_erp.sql. Es aditiva e idempotente; no reemplaza clientes ni tablas existentes.
+3. Importar por separado el catálogo privado recuperado del prototipo. No incluir este SQL en el repositorio público ni dentro de public/.
+4. Subir app/ y public/ de la versión probada. Conservar config/local.php, sus permisos y el DocumentRoot existente /home/mobaewow/moba-erp/public.
+5. Comprobar login, clientes existentes, /?view=erp, catálogo, cálculo, guardado y PDF. Las pruebas destructivas se ejecutan solo en CI con datos ficticios.
+6. Mantener la copia anterior para volver a sus archivos si hay un fallo. La migración aditiva permite volver al módulo inicial sin borrar datos nuevos.
+
+No cambiar la raíz de mobacreativa.com, sus DNS, correo ni configuración PHP global. No volver a importar schema.sql sobre una base existente. No leer ni publicar credenciales. El repositorio no despliega automáticamente.

@@ -1,21 +1,11 @@
-# Estado del desarrollo · 1 de octubre de 2026
+# Estado · 3 de octubre de 2026
 
-Se recuperó el traspaso del chat «Diseñar ERP presupuestos»: repositorio vacío, PHP y MariaDB/MySQL, marcas y proveedores separados, colores y tallas, costes históricos y futuro motor textil/DTF.
+Producción: acceso privado y módulo de clientes funcionando en erp.mobacreativa.com. SSL activo según comprobación anterior y acceso confirmado por el usuario.
 
-Implementado localmente:
-- Acceso de administrador con hash, renovación de sesión, caducidad por inactividad y límite persistente de intentos por IP.
-- Formularios con CSRF, salida HTML escapada y consultas parametrizadas.
-- Alta, listado, búsqueda y edición de clientes.
-- Esquema inicial de catálogo con integridad de marca/color y costes fechados por proveedor.
-- Pruebas de validación y persistencia y workflow para MariaDB.
+Nueva implementación en PR #2: catálogo, bibliotecas, tarifas, cálculo y presupuestos versionados. Pruebas PHP 8.2/8.3, MariaDB y HTTP iniciales superadas. Validación de navegador en curso: se está corrigiendo un fallo en el recorrido de nuevo presupuesto antes de publicar.
 
-Verificación pendiente: no hay PHP ni MariaDB disponibles en este equipo. Las pruebas no se han ejecutado. El workflow tampoco se ha ejecutado porque no se pudo subir el código.
+Recuperado el hilo completo y el prototipo V1.3.2. Preparado fuera del repositorio público un SQL privado con 96 productos, 20 tarifas, 36 colores, 16 tallas y proveedores; todavía no importado a producción.
 
-GitHub: el repositorio se pudo consultar y no tenía ramas. La creación del README por la integración devolvió 403 «Resource not accessible by integration». No se modificó GitHub, no hay PR y no se ha desplegado el ERP.
+Pendiente: completar validación de navegador, actualizar código en hosting, importar catálogo y verificar con la sesión real. Namecheap solicitó iniciar sesión de nuevo al entrar en Hosting List.
 
-Próxima sesión:
-1. Habilitar escritura de Contents en la integración de GitHub o usar una sesión Git autenticada.
-2. Ejecutar las pruebas PHP/MariaDB y una comprobación del flujo web completo antes de publicar.
-3. Subir la base local al repositorio y comprobar CI.
-4. Recuperar el resumen funcional detallado anterior. No fijar tarifas ni fórmulas DTF/márgenes sin él.
-5. Completar interfaz de catálogo y presupuestos con instantáneas históricas.
+Consultar README.md para límites funcionales. No considerar implementadas las fases futuras ni los configuradores especializados aún pendientes.
