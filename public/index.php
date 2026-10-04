@@ -2,12 +2,13 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/Customers.php';
 require dirname(__DIR__) . '/app/Auth.php';
+require dirname(__DIR__) . '/app/Users.php';
 use Moba\Customers;
 use Moba\Auth;
 
 function e(mixed $value): string { return htmlspecialchars(is_scalar($value) ? (string) $value : '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function field(array $input, string $key): string { return isset($input[$key]) && is_string($input[$key]) ? $input[$key] : ''; }
-function redirect(): never { header('Location: /'); exit; }
+function redirect(string $location = '/'): never { header('Location: '.$location); exit; }
 
 if (!in_array(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), ['/', '/index.php'], true)) {
     http_response_code(404);
@@ -46,7 +47,11 @@ $rows = [];
 $query = substr(field($_GET, 'q'), 0, 160);
 try {
     $db = new PDO($config['dsn'], $config['user'], $config['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
+    $users = new \Moba\Users($db,$config);
+    $actor = $users->current($_SESSION);
+    if (!$actor) { unset($_SESSION['authenticated']); }
     $customers = new Customers($db);
+    if (isset($_GET['api'])) { require dirname(__DIR__) . '/app/api.php'; }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!hash_equals($_SESSION['csrf'], field($_POST, 'csrf'))) {
             http_response_code(403);
@@ -64,17 +69,20 @@ try {
                 http_response_code(429);
                 throw new InvalidArgumentException('Demasiados intentos. Espera 15 minutos antes de volver a intentarlo.');
             }
-            if (!Auth::verify(field($_POST, 'username'), field($_POST, 'password'), $config)) {
+            if (!($identity = $users->login(field($_POST, 'username'), field($_POST, 'password')))) {
                 throw new InvalidArgumentException('Usuario o contraseña incorrectos.');
             }
             $db->prepare('DELETE FROM login_attempts WHERE ip_hash=?')->execute([$ip]);
             session_regenerate_id(true);
             $_SESSION['authenticated'] = true;
+            $_SESSION['user_id'] = (int)$identity['id'];
+            $_SESSION['user_version'] = (int)$identity['session_version'];
             $_SESSION['csrf'] = bin2hex(random_bytes(32));
             redirect();
         }
         if (empty($_SESSION['authenticated'])) { http_response_code(403); throw new InvalidArgumentException('Inicia sesión para continuar.'); }
         if ($action === 'logout') { $_SESSION = []; session_destroy(); redirect(); }
+        \Moba\Users::allow($actor,['admin','sales']);
         if ($action === 'save_customer') {
             $idText = field($_POST, 'id');
             $id = $idText === '' ? null : filter_var($idText, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -82,9 +90,10 @@ try {
             $editing = $_POST;
             $customers->save($_POST, $id);
             $_SESSION['success'] = $id === null ? 'Cliente creado.' : 'Cliente actualizado.';
-            redirect();
+            redirect('/?view=customers');
         }
     }
+    if ($actor && ($actor['role']==='production' || field($_GET,'view')==='team')) { require dirname(__DIR__).'/app/team.php';exit; }
     if (!empty($_SESSION['authenticated']) && isset($_GET['edit'])) {
         $id = filter_var(field($_GET, 'edit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         $editing = $id === false ? null : $customers->find($id);
@@ -97,9 +106,14 @@ try {
     http_response_code(503);
     $error = 'No se puede acceder a los datos. Revisa la configuración y la base de datos.';
 }
-if (!empty($_SESSION['authenticated']) && isset($customers)) {
+if (!empty($_SESSION['authenticated']) && isset($customers) && ($actor['role'] ?? '')!=='production') {
     try { $rows = $customers->search($query); }
     catch (Throwable $exception) { http_response_code(503); $error = 'No se pueden cargar los clientes.'; }
+}
+if (!empty($_SESSION['authenticated']) && ($actor['role'] ?? '')==='production') { require dirname(__DIR__).'/app/team.php';exit; }
+if (!empty($_SESSION['authenticated']) && (field($_GET,'view') === 'erp' || (field($_GET,'view') === '' && !isset($_GET['edit']) && !isset($_GET['q']) && $_SERVER['REQUEST_METHOD'] === 'GET'))) {
+    require dirname(__DIR__) . '/app/erp.php';
+    exit;
 }
 ?>
 <!doctype html>
@@ -112,8 +126,8 @@ if (!empty($_SESSION['authenticated']) && isset($customers)) {
 <?php if (empty($_SESSION['authenticated'])): ?>
 <section class="login"><p class="eyebrow">MOBA CREATIVA</p><h1>Tu taller, organizado.</h1><p>Acceso privado a la gestión de clientes.</p><form method="post"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><label>Usuario<input name="username" required autocomplete="username" maxlength="80"></label><label>Contraseña<input type="password" name="password" required autocomplete="current-password"></label><button>Entrar</button></form></section>
 <?php else: ?>
-<p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
-<div class="layout"><section><form class="search" method="get"><label>Buscar por nombre o NIF<input name="q" value="<?= e($query) ?>" maxlength="160" placeholder="Nombre o NIF"></label><button>Buscar</button></form>
+<p><a href="/?view=erp">Abrir presupuestos y catálogo →</a></p><p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
+<div class="layout"><section><form class="search" method="get"><input type="hidden" name="view" value="customers"><label>Buscar por nombre o NIF<input name="q" value="<?= e($query) ?>" maxlength="160" placeholder="Nombre o NIF"></label><button>Buscar</button></form>
 <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Contacto</th><th></th></tr></thead><tbody>
 <?php foreach ($rows as $row): ?><tr><td><strong><?= e($row['name']) ?></strong><small><?= e($row['tax_id']) ?></small></td><td><?= e($row['email']) ?><small><?= e($row['phone']) ?></small></td><td><a href="/?edit=<?= e($row['id']) ?>">Editar<span class="sr-only"> <?= e($row['name']) ?></span></a></td></tr><?php endforeach ?>
 <?php if (!$rows): ?><tr><td colspan="3">No hay clientes<?= $query !== '' ? ' que coincidan con la búsqueda' : ' todavía' ?>.</td></tr><?php endif ?>
@@ -121,5 +135,5 @@ if (!empty($_SESSION['authenticated']) && isset($customers)) {
 <section class="card"><h2><?= !empty($editing['id']) ? 'Editar cliente' : 'Nuevo cliente' ?></h2><form method="post"><input type="hidden" name="action" value="save_customer"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><input type="hidden" name="id" value="<?= e(is_scalar($editing['id'] ?? '') ? ($editing['id'] ?? '') : '') ?>">
 <?php foreach (['name' => 'Nombre o razón social', 'tax_id' => 'NIF / CIF', 'email' => 'Correo electrónico', 'phone' => 'Teléfono', 'address' => 'Dirección'] as $key => $label): ?>
 <label><?= e($label) ?><input name="<?= e($key) ?>" type="<?= $key === 'email' ? 'email' : 'text' ?>" value="<?= e($editing[$key] ?? '') ?>" <?= $key === 'name' ? 'required' : '' ?>></label>
-<?php endforeach ?><button>Guardar cliente</button> <a href="/">Limpiar formulario</a></form></section></div>
+<?php endforeach ?><button>Guardar cliente</button> <a href="/?view=customers">Limpiar formulario</a></form></section></div>
 <?php endif ?></main><footer>MOBA ERP · Primera versión · Clientes</footer></body></html>
