@@ -36,7 +36,9 @@ assert status == 403
 status, page, _ = request(client, {'action': 'login', 'csrf': csrf, 'username': 'wrong', 'password': 'ci-password-only'})
 assert 'Usuario o contraseña incorrectos' in page and 'Nuevo cliente' not in page
 status, page, _ = request(client, {'action': 'login', 'csrf': csrf, 'username': 'ci-admin', 'password': 'ci-password-only'})
-assert status == 200 and 'Nuevo cliente' in page
+assert status == 200 and '<h1 id="title">Inicio</h1>' in page
+status, customer_page, _ = request(client, path='?view=customers')
+assert status == 200 and 'Nuevo cliente' in customer_page
 new_csrf = token(page)
 assert new_csrf != csrf
 status, _, _ = request(client, {'action': 'save_customer', 'csrf': csrf, 'name': 'Bad CSRF'})

@@ -12,3 +12,5 @@ Destino exclusivo: erp.mobacreativa.com. La versión inicial de clientes ya func
 6. Mantener la copia anterior para volver a sus archivos si hay un fallo. La migración aditiva permite volver al módulo inicial sin borrar datos nuevos.
 
 No cambiar la raíz de mobacreativa.com, sus DNS, correo ni configuración PHP global. No volver a importar schema.sql sobre una base existente. No leer ni publicar credenciales. El repositorio no despliega automáticamente.
+
+Para usuarios y órdenes importar también database/003_users.sql antes de actualizar el código. No modifica credenciales existentes ni crea cuentas.
