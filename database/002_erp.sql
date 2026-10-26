@@ -1,0 +1,21 @@
+-- Additive migration. Existing customer/catalog tables and credentials are preserved.
+CREATE TABLE IF NOT EXISTS erp_records (
+ kind VARCHAR(24) NOT NULL,
+ id CHAR(32) NOT NULL,
+ version INT UNSIGNED NOT NULL,
+ document LONGTEXT NOT NULL CHECK (JSON_VALID(document)),
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ PRIMARY KEY (kind,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS erp_history (
+ kind VARCHAR(24) NOT NULL,
+ id CHAR(32) NOT NULL,
+ version INT UNSIGNED NOT NULL,
+ document LONGTEXT NOT NULL CHECK (JSON_VALID(document)),
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY (kind,id,version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS erp_sequences (
+ year SMALLINT UNSIGNED PRIMARY KEY,
+ last_number INT UNSIGNED NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
