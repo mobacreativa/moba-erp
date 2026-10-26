@@ -12,3 +12,10 @@ Pendientes del alcance original: importación XLSX directa, ofertas múltiples p
 
 ## Ajuste de entrada (4 octubre)
 Desplegado moba-home-fix.zip: la raíz autenticada abre Inicio; enlaces Clientes apuntan a ?view=customers. Producción conserva órdenes. Verificación visual autenticada pendiente por sesión caducada.
+
+## Menú y equipo · 23 octubre 2026
+Preparado, pendiente de despliegue por falta de sesión cPanel: menú homogéneo font-weight 300; Nuevo presupuesto solo dentro de Presupuestos; acceso directo Crear usuario en órdenes para administrador. Roles de producción ya restringidos en servidor a órdenes propias; pantalla Usuarios verificada en producción con administrador. JS validado con node --check. Paquete work/moba-menu-20261023.zip (4 archivos, sin datos ni configuración).
+
+Desplegado y verificado el 23 octubre: paquetes moba-menu-20261023.zip y moba-menu-assets-20261023.zip. Comprobados menú light (peso calculado 300), formulario Crear usuario con Producción predeterminado, y Nuevo presupuesto dentro de Presupuestos. Recursos versionados para invalidar caché. No se han creado usuarios reales ni modificado datos. Captura outputs/menu-20261023.png.
+
+24 octubre: desplegado moba-workflow-20261024.zip. Flujo de trabajo renombrado, Usuarios separado en menú principal (admin), filtros combinables cliente/estado/responsable y limpiar. Cliente seleccionable en orden; presupuesto prevalece. Verificados filtros en producción y acceso directo Usuarios, sin modificar órdenes reales. JS syntax y combinaciones probadas con Node. Órdenes antiguas sin cliente muestran Sin cliente. Captura outputs/workflow-20261024.png.

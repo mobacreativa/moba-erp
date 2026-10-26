@@ -4,7 +4,7 @@ namespace Moba;
 use InvalidArgumentException;
 final class WorkOrders
 {
-    public function __construct(private Records $records,private Users $users) {}
+    public function __construct(private Records $records,private Users $users,private ?\PDO $db=null) {}
     public function all(array $actor): array {
         return array_values(array_filter($this->records->all('work_order'),fn($o)=>$actor['role']!=='production' || (int)$o['assignee_id']===(int)$actor['id']));
     }
@@ -27,7 +27,16 @@ final class WorkOrders
         if (!$user['active'] || !in_array($user['role'],['admin','production'],true)) { throw new InvalidArgumentException('El responsable debe ser un usuario activo de producción o administrador.'); }
         $quoteId=$input['quote_id'] ?? '';$quoteName='';
         if ($quoteId!=='') { $quote=$this->records->get('quote',$quoteId);$quoteName=$quote['name']; }
-        $doc=['name'=>$name,'instructions'=>$instructions,'due_date'=>$date,'assignee_id'=>$assignee,'assignee_name'=>$user['name'],'quote_id'=>$quoteId,'quote_name'=>$quoteName,'status'=>$old['status'] ?? 'pending','progress'=>$old['progress'] ?? '', 'actor'=>$actor['username']];
+        $customerId=(int)($input['customer_id'] ?? ($old['customer_id'] ?? 0));$customerName='';
+        if ($quoteId!=='') { $customerId=(int)$quote['customer_id'];$customerName=(string)$quote['customer']['name']; }
+        elseif ($customerId>0) {
+            if (!$this->db) { throw new InvalidArgumentException('No se puede consultar el cliente.'); }
+            $stmt=$this->db->prepare('SELECT name FROM customers WHERE id=?');$stmt->execute([$customerId]);
+            $customerName=$stmt->fetchColumn();if ($customerName===false) { throw new InvalidArgumentException('Cliente no encontrado.'); }
+        }
+        $payment=$input['payment_method'] ?? ($old['payment_method'] ?? '');
+        if (!in_array($payment,['','cash','invoiced'],true)) { throw new InvalidArgumentException('Forma de pago no válida.'); }
+        $doc=['customer_id'=>$customerId,'customer_name'=>$customerName,'payment_method'=>$payment,'name'=>$name,'instructions'=>$instructions,'due_date'=>$date,'assignee_id'=>$assignee,'assignee_name'=>$user['name'],'quote_id'=>$quoteId,'quote_name'=>$quoteName,'status'=>$old['status'] ?? 'pending','progress'=>$old['progress'] ?? '', 'actor'=>$actor['username']];
         return $this->records->save('work_order',$doc,$id,(int)($input['version'] ?? 0));
     }
     public function progress(array $input,array $actor): array {

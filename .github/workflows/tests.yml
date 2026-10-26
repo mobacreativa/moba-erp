@@ -32,6 +32,7 @@ jobs:
           php tests/pricing.php
           node --check public/erp.js
           node --check public/team.js
+          node --check public/tasks.js
       - name: Import schema and integration tests
         env:
           MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
@@ -52,6 +53,7 @@ jobs:
           trap 'kill "$PID"' EXIT
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ > /dev/null && break; sleep 1; done
           python3 tests/web_flow.py
+          python3 tests/tasks_http.py
       - name: Browser dependencies
         if: matrix.php == '8.2'
         run: |

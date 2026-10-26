@@ -93,6 +93,7 @@ try {
             redirect('/?view=customers');
         }
     }
+    if ($actor && field($_GET,'view')==='tasks') { require dirname(__DIR__).'/app/tasks.php';exit; }
     if ($actor && ($actor['role']==='production' || field($_GET,'view')==='team')) { require dirname(__DIR__).'/app/team.php';exit; }
     if (!empty($_SESSION['authenticated']) && isset($_GET['edit'])) {
         $id = filter_var(field($_GET, 'edit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);

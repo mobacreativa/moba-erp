@@ -21,14 +21,18 @@ const area=(key,label,value='')=>`<label class="full">${esc(label)}<textarea nam
 function select(key,label,options,value='',blank=true){return `<label>${esc(label)}<select name="${key}" aria-label="${esc(label)}">${blank?'<option value="">Seleccionar…</option>':''}${options.map(([id,text])=>`<option value="${esc(id)}" ${String(value)===String(id)?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`}
 const choices=(kind)=>data[kind].filter(x=>x.active).map(x=>[x.id,x.name]);
 function chips(key,items,selected=[]){return `<div class="chips">${items.map(x=>`<label><input name="${key}" type="checkbox" value="${esc(x.id)}" ${selected.includes(x.id)?'checked':''}>${esc(x.code?x.code+' · '+x.name:x.name)}</label>`).join('')}</div>`}
-function show(target){
+const navigationStack=[];
+$('go-back').addEventListener('click',()=>show(navigationStack.pop()||'home',false));
+function show(target,remember=true){
+  if(remember&&target!==view)navigationStack.push(view==='new'?'quotes':view);
+  $('go-back').hidden=target==='home';
   view=target;filter='';$('title').textContent=labels[target]||target;
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===target));
   if(target==='home')home();else if(target==='quotes')quotes();else if(target==='new'){draft={date:new Date().toLocaleDateString('en-CA'),valid_days:30,lines:[]};quoteEditor();}else catalog();
 }
 function home(){
   const pending=data.quote.filter(q=>['draft','issued'].includes(q.status));
-  $('content').innerHTML=`<div class="grid">${[['Catálogo',data.product.filter(x=>x.active).length],['Clientes',data.customers.length],['Presupuestos pendientes',pending.length],['Aceptados',data.quote.filter(q=>q.status==='accepted').length]].map(([t,n])=>`<div class="card">${t}<b class="metric">${n}</b></div>`).join('')}</div><div class="card toolbar">${button('+ Nuevo presupuesto','new')}${button('Ver presupuestos','quotes')}<a class="button" href="/?view=customers">Gestionar clientes</a></div><div class="card"><h2>Presupuestos recientes</h2>${quoteTable(data.quote.slice(0,8))}</div><p class="muted">Los datos se guardan en el servidor. Cada modificación conserva una versión anterior. Las tarifas de venta no se consideran costes de producción.</p>`;
+  $('content').innerHTML=`<div class="grid">${[['Catálogo',data.product.filter(x=>x.active).length],['Clientes',data.customers.length],['Presupuestos pendientes',pending.length],['Aceptados',data.quote.filter(q=>q.status==='accepted').length]].map(([t,n])=>`<div class="card">${t}<b class="metric">${n}</b></div>`).join('')}</div><div class="card toolbar">${button('Ver presupuestos','quotes')}<a class="button" href="/?view=customers">Gestionar clientes</a></div><div class="card"><h2>Presupuestos recientes</h2>${quoteTable(data.quote.slice(0,8))}</div><p class="muted">Los datos se guardan en el servidor. Cada modificación conserva una versión anterior. Las tarifas de venta no se consideran costes de producción.</p>`;
 }
 function quoteTable(rows){return `<div class="scroll"><table><thead><tr><th>Número</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Total</th><th></th></tr></thead><tbody>${rows.map(q=>`<tr><td>${esc(q.name)}</td><td>${esc(q.customer.name)}</td><td>${esc(q.date)}</td><td>${statuses[q.status]}</td><td class="money">${money(q.total)}</td><td>${button('Abrir','openquote',q.id)}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay presupuestos.</td></tr>'}</tbody></table></div>`}
 function quotes(){ $('content').innerHTML=`<div class="toolbar">${button('+ Nuevo presupuesto','new')}<input id="filter" placeholder="Buscar número o cliente" value="${esc(filter)}"></div><div class="card">${quoteTable(data.quote.filter(q=>(q.name+' '+q.customer.name).toLowerCase().includes(filter.toLowerCase())))}</div>`; }
