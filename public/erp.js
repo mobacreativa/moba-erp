@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = value => value == null ? 'Coste pendiente' : new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(value);
-const labels = {product:'Productos y servicios',rate:'Tarifas y costes',supplier:'Proveedores',brand:'Marcas',color:'Colores',size:'Tallas',settings:'Datos de empresa',quotes:'Presupuestos',home:'Inicio',new:'Nuevo presupuesto'};
+const labels = {product:'Productos y servicios',rate:'Tarifas y costes',supplier:'Proveedores',brand:'Marcas',color:'Colores',size:'Tallas',settings:'Datos de empresa',quotes:'Presupuestos',home:'Inicio',configuration:'Configuración general',new:'Nuevo presupuesto'};
 const statuses = {draft:'Borrador',issued:'Emitido',accepted:'Aceptado',rejected:'Rechazado',cancelled:'Anulado'};
 let data, view='home', editing, draft, calculated, filter='';
 function notice(message='',error=false){$('notice').textContent=message;$('notice').className=error?'error':'success';}
@@ -28,8 +28,9 @@ function show(target,remember=true){
   $('go-back').hidden=target==='home';
   view=target;filter='';$('title').textContent=labels[target]||target;
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===target));
-  if(target==='home')home();else if(target==='quotes')quotes();else if(target==='new'){draft={date:new Date().toLocaleDateString('en-CA'),valid_days:30,lines:[]};quoteEditor();}else catalog();
+  if(target==='configuration')configuration();else if(target==='home')home();else if(target==='quotes')quotes();else if(target==='new'){draft={date:new Date().toLocaleDateString('en-CA'),valid_days:30,lines:[]};quoteEditor();}else catalog();
 }
+function configuration(){ $('content').innerHTML=`<div class="grid">${data.actor?.role==='admin'?'<a class="card button" href="/?view=team&amp;section=users">Usuarios</a>':''}${['product','rate','supplier','brand','color','size','settings'].map(k=>`<button class="card" data-view="${k}">${labels[k]}</button>`).join('')}</div>`; }
 function home(){
   const pending=data.quote.filter(q=>['draft','issued'].includes(q.status));
   $('content').innerHTML=`<div class="grid">${[['Catálogo',data.product.filter(x=>x.active).length],['Clientes',data.customers.length],['Presupuestos pendientes',pending.length],['Aceptados',data.quote.filter(q=>q.status==='accepted').length]].map(([t,n])=>`<div class="card">${t}<b class="metric">${n}</b></div>`).join('')}</div><div class="card toolbar">${button('Ver presupuestos','quotes')}<a class="button" href="/?view=customers">Gestionar clientes</a></div><div class="card"><h2>Presupuestos recientes</h2>${quoteTable(data.quote.slice(0,8))}</div><p class="muted">Los datos se guardan en el servidor. Cada modificación conserva una versión anterior. Las tarifas de venta no se consideran costes de producción.</p>`;
@@ -158,4 +159,4 @@ $('editform').addEventListener('submit',async event=>{event.preventDefault();con
   else await saveRecord(event);
 }catch(e){$('formerror').hidden=false;$('formerror').textContent=e.message}finally{submit.disabled=false;submit.textContent='Guardar'}});
 document.addEventListener('input',event=>{if(event.target.id==='filter'){filter=event.target.value;const position=event.target.selectionStart;if(view==='quotes')quotes();else catalog();$('filter').focus();$('filter').setSelectionRange(position,position);}});
-load().then(()=>show('home')).catch(e=>notice(e.message,true));
+load().then(()=>show(new URLSearchParams(location.search).get('section')==='configuration'?'configuration':'home')).catch(e=>notice(e.message,true));

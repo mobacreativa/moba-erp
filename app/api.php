@@ -10,6 +10,8 @@ require_once __DIR__.'/Quotes.php';
 
 require_once __DIR__.'/WorkOrders.php';
 require_once __DIR__.'/GeneralTasks.php';
+require_once __DIR__.'/Accounting.php';
+require_once __DIR__.'/InvoiceReader.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -23,6 +25,7 @@ try {
 
     $orders = new \Moba\WorkOrders($records,$users,$db);
 
+    $reader=new \Moba\InvoiceReader($records,$config['invoice_reader']??[],dirname(__DIR__).'/storage/invoices');
     $tasks = new \Moba\Tasks($records,$users,dirname(__DIR__).'/storage/task-files');
     $action = field($_GET,'api');
 
@@ -32,7 +35,10 @@ try {
 
         $action = field($_GET,'api');
 
-        if ($action === 'team_tasks') {
+        if ($action === 'account_load') { \Moba\Users::allow($actor,['admin']);$entries=$records->all('account_entry');$linked=array_column($entries,'invoice_id');$uploads=array_values(array_filter($records->all('invoice_upload'),fn($i)=>!in_array($i['id'],$linked,true)));$result=['csrf'=>$_SESSION['csrf'],'entries'=>$entries,'uploads'=>array_map(fn($i)=>array_intersect_key($i,array_flip(['id','name','status'])),$uploads),'reader_enabled'=>$reader->enabled()];
+        } elseif ($action === 'account_invoice_status') { $result=$reader->poll(field($_GET,'id'),$actor);
+        } elseif ($action === 'account_invoice_file') { $reader->download(field($_GET,'id'),$actor);
+        } elseif ($action === 'team_tasks') {
             $result=['csrf'=>$_SESSION['csrf'],'actor'=>['id'=>(int)$actor['id'],'role'=>$actor['role']],'tasks'=>$tasks->all($actor),'users'=>array_map(fn($u)=>['id'=>(int)$u['id'],'name'=>$u['name']],array_values(array_filter(array_merge([$users->root()],$users->all()),fn($u)=>$u['active'])))];
         } elseif ($action === 'team_file') { $tasks->download(field($_GET,'id'),field($_GET,'file'),$actor);
         } elseif ($action === 'team_load') {
@@ -58,11 +64,11 @@ try {
 
         } elseif ($action === 'load') {
 
-            $result = ['csrf'=>$_SESSION['csrf'],'customers'=>$db->query('SELECT * FROM customers ORDER BY name')->fetchAll(PDO::FETCH_ASSOC)];
+            $result = ['csrf'=>$_SESSION['csrf'],'actor'=>['role'=>$actor['role']],'customers'=>$db->query('SELECT * FROM customers ORDER BY name')->fetchAll(PDO::FETCH_ASSOC)];
 
-            foreach (\Moba\Records::KINDS as $kind) { if (!in_array($kind,['work_order','task'],true)) { $result[$kind] = $records->all($kind); } }
+            foreach (\Moba\Records::KINDS as $kind) { if (!in_array($kind,['work_order','task','account_entry','invoice_upload'],true)) { $result[$kind] = $records->all($kind); } }
 
-        } elseif ($action === 'history') { if (in_array(field($_GET,'kind'),['work_order','task'],true)) { throw new InvalidArgumentException('Utiliza el histórico de órdenes.'); } $result = $records->history(field($_GET,'kind'),field($_GET,'id')); }
+        } elseif ($action === 'history') { if (in_array(field($_GET,'kind'),['work_order','task','account_entry','invoice_upload'],true)) { throw new InvalidArgumentException('Utiliza el histórico de órdenes.'); } $result = $records->history(field($_GET,'kind'),field($_GET,'id')); }
 
         else { throw new InvalidArgumentException('Acción no válida.'); }
 
@@ -84,6 +90,8 @@ try {
 
         $result = match ($action) {
 
+            'account_invoice_upload' => $reader->upload($_FILES['file']??[],$actor),
+            'account_save' => (new \Moba\Accounting($records))->save($input,$actor),
             'team_task_save' => $tasks->save($input,$actor),
             'team_task_upload' => $tasks->attach($input,$_FILES['file']??[],$actor),
             'team_user' => $users->save($input,$actor),
@@ -104,7 +112,7 @@ try {
 
                 \Moba\Users::allow($actor,['admin']);
 
-                if (in_array($kind,['quote','work_order','task'],true)) { throw new InvalidArgumentException('Utiliza Guardar presupuesto.'); }
+                if (in_array($kind,['quote','work_order','task','account_entry','invoice_upload'],true)) { throw new InvalidArgumentException('Utiliza Guardar presupuesto.'); }
 
                 return $records->save($kind,$input['data'] ?? [],$id,$version);
 

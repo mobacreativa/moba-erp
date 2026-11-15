@@ -33,6 +33,7 @@ jobs:
           node --check public/erp.js
           node --check public/team.js
           node --check public/tasks.js
+          node --check public/accounting.js
       - name: Import schema and integration tests
         env:
           MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
@@ -45,6 +46,7 @@ jobs:
           php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/003_users.sql"));'
           php tests/team.php
           php tests/erp_integration.php
+          php tests/accounting.php
           php tests/configure.php
       - name: HTTP authentication and customer flow
         run: |
@@ -53,6 +55,7 @@ jobs:
           trap 'kill "$PID"' EXIT
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ > /dev/null && break; sleep 1; done
           python3 tests/tasks_http.py
+          python3 tests/accounting_http.py
           python3 tests/web_flow.py
       - name: Browser dependencies
         if: matrix.php == '8.2'

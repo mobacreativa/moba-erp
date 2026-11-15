@@ -93,6 +93,7 @@ try {
             redirect('/?view=customers');
         }
     }
+    if ($actor && field($_GET,'view')==='accounting') { \Moba\Users::allow($actor,['admin']);require dirname(__DIR__).'/app/accounting-page.php';exit; }
     if ($actor && field($_GET,'view')==='tasks') { require dirname(__DIR__).'/app/tasks-page.php';exit; }
     if ($actor && ($actor['role']==='production' || field($_GET,'view')==='team')) { require dirname(__DIR__).'/app/team.php';exit; }
     if (!empty($_SESSION['authenticated']) && isset($_GET['edit'])) {
