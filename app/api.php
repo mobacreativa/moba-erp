@@ -90,6 +90,7 @@ try {
 
         $result = match ($action) {
 
+            'account_invoice_local' => $reader->upload($_FILES['file']??[],$actor,$input),
             'account_invoice_upload' => $reader->upload($_FILES['file']??[],$actor),
             'account_save' => (new \Moba\Accounting($records))->save($input,$actor),
             'team_task_save' => $tasks->save($input,$actor),

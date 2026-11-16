@@ -19,3 +19,10 @@ Preparado, pendiente de despliegue por falta de sesión cPanel: menú homogéneo
 Desplegado y verificado el 23 octubre: paquetes moba-menu-20261023.zip y moba-menu-assets-20261023.zip. Comprobados menú light (peso calculado 300), formulario Crear usuario con Producción predeterminado, y Nuevo presupuesto dentro de Presupuestos. Recursos versionados para invalidar caché. No se han creado usuarios reales ni modificado datos. Captura outputs/menu-20261023.png.
 
 24 octubre: desplegado moba-workflow-20261024.zip. Flujo de trabajo renombrado, Usuarios separado en menú principal (admin), filtros combinables cliente/estado/responsable y limpiar. Cliente seleccionable en orden; presupuesto prevalece. Verificados filtros en producción y acceso directo Usuarios, sin modificar órdenes reales. JS syntax y combinaciones probadas con Node. Órdenes antiguas sin cliente muestran Sin cliente. Captura outputs/workflow-20261024.png.
+
+## Configuración y Contabilidad · 16 noviembre 2026
+Desplegado moba-accounting-20261115.zip en /home/mobaewow/moba-erp (13 archivos app/public). Extracción completa confirmada en cPanel y acceso HTTPS comprobado sin autenticar. Copia previa: backup-before-accounting-20261115.zip (app/public) fuera de public. No se han modificado configuración privada, datos ni esquema.
+
+Código probado: 0d3dd76c9f7ce35915db0cae3feeb9de3642d443, rama codex/erp-budget-workflow. GitHub Actions 43762747091: PHP 8.2 y 8.3, pruebas API/DB y navegador aprobadas. Incluye agrupación Configuración general, Contabilidad para administrador, registro manual EUR, cobros/pagos, calendario, adaptador opcional Azure Document Intelligence y corrección de accesibilidad de selectores de tareas.
+
+Pendiente: comprobación autenticada en producción (usuario debe iniciar sesión); recurso y credenciales Azure y prueba real OCR. El usuario autorizó preparar Azure Document Intelligence el 16 noviembre. El lector sigue desactivado, no se han transmitido facturas a Azure. Se ha abierto portal.azure.com para que el usuario inicie sesión.

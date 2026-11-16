@@ -30,3 +30,16 @@ for action in ('account_load','account_invoice_status&id=abc','account_invoice_f
 code,_=api(worker,token,'account_save',{});assert code==403
 code,_=api(admin,'wrong','account_save',{});assert code==403
 print('Accounting HTTP permissions, persistence and generic API isolation OK')
+
+def upload_local(client,token,content,name='test.pdf'):
+    boundary=uuid.uuid4().hex
+    body=(f'--{boundary}\r\nContent-Disposition: form-data; name="csrf"\r\n\r\n{token}\r\n--{boundary}\r\nContent-Disposition: form-data; name="payload"\r\n\r\n'+json.dumps({'party':'Local supplier','base':'100.00','tax':'21.00'})+f'\r\n--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\nContent-Type: application/pdf\r\n\r\n').encode()+content+f'\r\n--{boundary}--\r\n'.encode()
+    code,body,headers=request(client,'?api=account_invoice_local',body,{'Content-Type':'multipart/form-data; boundary='+boundary})
+    return code,json.loads(body)
+code,j=upload_local(worker,token,b'%PDF-1.4\n');assert code==403
+code,j=upload_local(admin,csrf,b'<html><script>attack</script></html>','attack.html');assert code==422
+code,j=upload_local(admin,csrf,b'%PDF-1.4\n%%EOF');assert code==200
+invoice_id=j['data']['id']
+code,body,_=request(admin,'?api=account_invoice_status&id='+invoice_id);assert code==200 and json.loads(body)['data']['fields']['party']=='Local supplier'
+code,body,headers=request(admin,'?api=account_invoice_file&id='+invoice_id);assert code==200 and body.startswith(b'%PDF-')
+print('Local invoice storage, type validation and download authorization OK')

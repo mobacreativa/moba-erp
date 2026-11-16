@@ -18,9 +18,14 @@ final class InvoiceReader {
         if ($result===false||!in_array($code,[200,202],true)) throw new InvalidArgumentException('El servicio de lectura no respondió correctamente. Inténtalo más tarde.');
         return [$headers,json_decode($result,true)??[]];
     }
-    public function upload(array $f,array $actor): array {
+    public function upload(array $f,array $actor,?array $local=null): array {
         Users::allow($actor,['admin']);
-        if (!$this->enabled()) throw new InvalidArgumentException('La lectura automática aún no está conectada.');
+        if ($local===null&&!$this->enabled()) throw new InvalidArgumentException('La lectura automática aún no está conectada.');
+        if ($local!==null) {
+            $clean=[];foreach (['party','date','due_date','reference','base','tax','invoice_total','currency'] as $field) {
+                $value=$local[$field]??'';if (!is_string($value)||mb_strlen($value)>190) throw new InvalidArgumentException('Datos de lectura no válidos.');$clean[$field]=$value;
+            }
+        }
         if (($f['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK||!is_string($f['tmp_name']??null)||!is_uploaded_file($f['tmp_name'])) throw new InvalidArgumentException('No se ha recibido la factura.');
         $size=filesize($f['tmp_name']);$mime=(new \finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);
         if (!$size||$size>5*1024*1024||!in_array($mime,['application/pdf','image/jpeg','image/png'],true)) throw new InvalidArgumentException('Sube un PDF, JPG o PNG de hasta 5 MB.');
@@ -28,6 +33,10 @@ final class InvoiceReader {
         $key=bin2hex(random_bytes(24));$path=$this->directory.'/'.$key;
         if (!move_uploaded_file($f['tmp_name'],$path)) throw new \RuntimeException('No se pudo guardar la factura.');chmod($path,0600);
         try {
+            if ($local!==null) {
+                $doc=$this->records->save('invoice_upload',['name'=>mb_substr(basename((string)$f['name']),0,190),'file'=>$key,'mime'=>$mime,'source'=>'browser','status'=>'succeeded','result'=>['fields'=>$clean,'confidence'=>[]]]);
+                return ['id'=>$doc['id'],'status'=>'succeeded'];
+            }
             [$headers]=$this->request($this->endpoint().'/documentintelligence/documentModels/prebuilt-invoice:analyze?api-version=2024-11-30',file_get_contents($path));
             $operation=$headers['operation-location']??'';if (!str_starts_with($operation,$this->endpoint().'/documentintelligence/')) throw new \RuntimeException('Respuesta de extracción no válida.');
             $doc=$this->records->save('invoice_upload',['name'=>mb_substr(basename((string)$f['name']),0,190),'file'=>$key,'mime'=>$mime,'operation'=>$operation,'status'=>'running']);

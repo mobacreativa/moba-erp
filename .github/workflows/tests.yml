@@ -34,6 +34,8 @@ jobs:
           node --check public/team.js
           node --check public/tasks.js
           node --check public/accounting.js
+          node --check public/invoice-local.js
+          node tests/invoice_fields.cjs
       - name: Import schema and integration tests
         env:
           MOBA_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=moba_test;charset=utf8mb4'
@@ -60,6 +62,7 @@ jobs:
       - name: Browser dependencies
         if: matrix.php == '8.2'
         run: |
+          python3 tools/ocr_assets.py
           npm install --no-save --package-lock=false playwright
           npx playwright install --with-deps chromium
       - name: Browser workflow and PDF
@@ -72,6 +75,7 @@ jobs:
           PID=$!
           trap 'kill "$PID"' EXIT
           node tests/browser.cjs
+          node tests/ocr_browser.cjs
       - uses: actions/upload-artifact@v4
         if: always() && matrix.php == '8.2'
         with:
