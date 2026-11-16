@@ -50,3 +50,9 @@ El adaptador Azure Document Intelligence (prebuilt-invoice, API 2024-11-30) est�
 ],
 ```
 Requiere cURL y fileinfo; PHP upload_max_filesize/post_max_size deben permitir 5 MB más multipart. Nunca versionar claves. Cada archivo PDF/JPG/PNG enviado se procesa externamente con posible coste del proveedor. Los originales se guardan fuera de public en storage/invoices; descargas autenticadas de administrador. Revisar todos los campos y el total antes de registrar. Un IVA ausente queda vacío, no se presume cero. Se puede reanudar una lectura desde Facturas pendientes sin reenviar el archivo. Configuración y prueba real del proveedor pendientes hasta disponer de cuenta autorizada.
+
+
+## Prueba de lectura local (16 noviembre 2026)
+Contabilidad usa PDF.js para el texto de PDF y Tesseract.js en español para imágenes/páginas escaneadas. Se ejecuta en el navegador; las bibliotecas, modelos y workers se sirven desde el propio ERP, sin CDN ni llamadas OCR externas. Las reglas de campos son orientativas y conservadoras: no se inventan vencimiento ni IVA ausentes. Revisar los datos antes de guardar. Se admite una factura por archivo PDF/JPG/PNG de hasta 5 MB y 10 páginas. El original se sube al almacenamiento privado del ERP al pulsar Guardar, con descarga exclusiva para administradores. Cancelar la revisión no lo sube.
+
+Para construir los recursos de despliegue/CI: `python tools/ocr_assets.py`. Descarga versiones fijadas de paquetes oficiales npm, verifica SHA-512 y copia únicamente archivos de runtime/licencias a public/vendor/ocr (ignorado en Git pero imprescindible en despliegue). No ejecuta scripts de instalación. El OCR necesita WebAssembly y un navegador moderno; puede ser lento en equipos modestos. La política CSP de Contabilidad permite WebAssembly, workers del mismo origen e imágenes locales; no habilita JavaScript inline ni destinos remotos. Azure permanece sin configurar y no se utiliza en este flujo.

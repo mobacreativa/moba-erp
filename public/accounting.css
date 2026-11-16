@@ -1,1 +1,3 @@
 .calendar{display:grid;grid-template-columns:repeat(7,minmax(80px,1fr));gap:5px;min-width:620px}.calendar-day{min-height:100px;background:#f5f1ea;padding:8px;border-radius:6px}.due{display:block;width:100%;margin-top:5px;text-align:left;font-size:11px;overflow-wrap:anywhere}.due small{display:block}.income{border-left:4px solid #357257}.expense{border-left:4px solid #ac6145}meter{display:block;width:100%;height:28px}.card:has(.calendar){overflow:auto}
+
+#cancel-reading[hidden]{display:none}
