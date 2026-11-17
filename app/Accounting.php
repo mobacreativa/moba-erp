@@ -25,7 +25,7 @@ final class Accounting {
         $paid=($p['paid']??false)===true;$paidDate=$paid?self::date($p['paid_date']??''):'';
         $invoiceId=$old['invoice_id']??($p['invoice_id']??'');
         if (!is_string($invoiceId)) throw new InvalidArgumentException('Factura no válida.');
-        if ($invoiceId!=='') { $invoice=$this->records->get('invoice_upload',$invoiceId);if ($invoice['status']!=='succeeded') throw new InvalidArgumentException('Revisa primero la extracción.'); }
+        if ($invoiceId!=='') { $invoice=$this->records->get('invoice_upload',$invoiceId);if ($invoice['deleted']??false) throw new InvalidArgumentException('Restaura la factura antes de registrarla.');if ($invoice['status']!=='succeeded') throw new InvalidArgumentException('Revisa primero la extracción.'); }
         $doc=['invoice_id'=>$invoiceId,'name'=>trim($name),'type'=>$type,'party'=>trim($party),'reference'=>trim($reference),'date'=>$date,'due_date'=>$due,'base_cents'=>$base,'tax_cents'=>$tax,'total_cents'=>$base+$tax,'currency'=>'EUR','paid'=>$paid,'paid_date'=>$paidDate,'actor'=>$actor['username']];
         return $this->records->save('account_entry',$doc,$id,(int)($p['version']??0));
     }

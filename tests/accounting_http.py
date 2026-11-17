@@ -31,7 +31,7 @@ code,body,_=request(admin,'?api=load');assert 'account_entry' not in json.loads(
 worker,token=login('task-one','task-test-password')
 for action in ('account_load','account_invoice_status&id=abc','account_invoice_file&id=abc'):
     code,_,_=request(worker,'?api='+action);assert code==403
-for action in ('account_save','account_trash','account_restore'):
+for action in ('account_save','account_trash','account_restore','account_invoice_trash','account_invoice_restore'):
     code,_=api(worker,token,action,{});assert code==403
     code,_=api(admin,'wrong',action,{});assert code==403
 code,_=api(admin,'wrong','account_save',{});assert code==403
@@ -63,3 +63,19 @@ code,_=api(admin,'wrong','account_ocr_config',{});assert code==403
 code,_=api(admin,csrf,'account_ocr_config',{'endpoint':'https://attacker.example','key':'a'*32,'tier':'F0'});assert code==422
 code,_=api(admin,csrf,'account_ocr_config',{'endpoint':'https://example.cognitiveservices.azure.com','key':'bad','tier':'F0'});assert code==422
 print('OCR configuration access and input validation OK')
+
+code,body,_=request(admin,'?api=account_load');uploads=json.loads(body)['data']['uploads']
+inv=next(i for i in uploads if i['id']==invoice_id)
+code,j=api(admin,csrf,'account_invoice_trash',{'id':invoice_id,'version':inv['version']});assert code==200 and j['data']['deleted']
+version=j['data']['version']
+code,body,_=request(admin,'?api=account_load');assert next(i for i in json.loads(body)['data']['uploads'] if i['id']==invoice_id)['deleted']
+code,_,_=request(admin,'?api=account_invoice_status&id='+invoice_id);assert code==422
+payload=dict(name='Deleted invoice',party='Test',type='expense',date='2026-11-17',base='100',tax='21',invoice_id=invoice_id)
+code,_=api(admin,csrf,'account_save',payload);assert code==422
+code,_=api(admin,csrf,'account_invoice_restore',{'id':invoice_id,'version':inv['version']});assert code==409
+code,j=api(admin,csrf,'account_invoice_restore',{'id':invoice_id,'version':version});assert code==200 and not j['data']['deleted']
+version=j['data']['version']
+code,body,_=request(admin,'?api=account_invoice_file&id='+invoice_id);assert code==200 and body.startswith(b'%PDF-')
+code,j=api(admin,csrf,'account_save',payload);assert code==200
+code,_=api(admin,csrf,'account_invoice_trash',{'id':invoice_id,'version':version});assert code==422
+print('Pending invoice trash/restore, stale version, original retention and registered invoice protection OK')

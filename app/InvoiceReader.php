@@ -55,8 +55,20 @@ final class InvoiceReader {
         foreach (['base'=>'SubTotal','tax'=>'TotalTax','invoice_total'=>'InvoiceTotal'] as $key=>$source) { $value=$f[$source]['valueCurrency']??[];$data[$key]=isset($value['amount'])?number_format((float)$value['amount'],2,'.',''):'';$data['currency']=$value['currencyCode']??($data['currency']??'');$confidence[$key]=$f[$source]['confidence']??null; }
         return ['fields'=>$data,'confidence'=>$confidence];
     }
+    public function trash(array $p,array $actor,bool $restore=false): array {
+        Users::allow($actor,['admin']);
+        if (!is_string($p['id']??null)||$p['id']==='') throw new InvalidArgumentException('Factura no válida.');
+        $doc=$this->records->get('invoice_upload',$p['id']);
+        foreach ($this->records->all('account_entry') as $entry) {
+            if (($entry['invoice_id']??'')===$doc['id']) throw new InvalidArgumentException('La factura ya está registrada. Gestiona su movimiento contable.');
+        }
+        $doc['deleted']=!$restore;$doc['deleted_at']=$restore?'':gmdate('c');$doc['actor']=$actor['username'];
+        $saved=$this->records->save('invoice_upload',$doc,$doc['id'],(int)($p['version']??0));
+        return array_intersect_key($saved,array_flip(['id','name','status','version','deleted']));
+    }
     public function poll(string $id,array $actor): array {
         Users::allow($actor,['admin']);$doc=$this->records->get('invoice_upload',$id);
+        if ($doc['deleted']??false) throw new InvalidArgumentException('Restaura la factura antes de revisarla.');
         if ($doc['status']==='succeeded') return ['id'=>$id,'status'=>'succeeded']+$doc['result'];
         if (!$this->enabled()) throw new InvalidArgumentException('El lector no está configurado.');
         [, $result]=$this->request($doc['operation']);
