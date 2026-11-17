@@ -26,3 +26,10 @@ Desplegado moba-accounting-20261115.zip en /home/mobaewow/moba-erp (13 archivos 
 Código probado: 0d3dd76c9f7ce35915db0cae3feeb9de3642d443, rama codex/erp-budget-workflow. GitHub Actions 43762747091: PHP 8.2 y 8.3, pruebas API/DB y navegador aprobadas. Incluye agrupación Configuración general, Contabilidad para administrador, registro manual EUR, cobros/pagos, calendario, adaptador opcional Azure Document Intelligence y corrección de accesibilidad de selectores de tareas.
 
 Pendiente: comprobación autenticada en producción (usuario debe iniciar sesión); recurso y credenciales Azure y prueba real OCR. El usuario autorizó preparar Azure Document Intelligence el 16 noviembre. El lector sigue desactivado, no se han transmitido facturas a Azure. Se ha abierto portal.azure.com para que el usuario inicie sesión.
+
+## Contabilidad · 17 noviembre 2026
+Desplegado y extracción confirmada en cPanel: work/moba-accounting-20261117.zip (11 archivos, 28.392 bytes) a /home/mobaewow/moba-erp. Copia previa confirmada backup-before-accounting-20261117.zip (10,61 MB, app/public). Conservadas configuración, documentos y DB. Captura outputs/accounting-deploy-20261117.jpg.
+
+Commit probado 08c656bcb6a104f86470634f82f126b402b98500, rama codex/erp-budget-workflow. CI 44023717832 aprobada PHP 8.2/8.3, DB, HTTP, navegador, OCR local real y flujo Azure simulado. Incluye Clientes/Proveedores en Contabilidad, conservación de acceso comercial a contactos sin datos financieros, encabezado calendario con mes/año, eliminar/restaurar movimientos y exclusión de borrados en métricas/calendario. Azure es el lector principal y local alternativa explícita. Configuración privada separada opcional config/invoice-reader.php (no creada, no versionar).
+
+Azure: sesión abierta, directorio actual muestra cero suscripciones. Abierto formulario de prueba gratuita Azure; usuario debe aceptar contrato y completar alta. No hay recurso ni clave configurados, ninguna factura enviada a Azure. Comprobación autenticada del despliegue pendiente: abierta pestaña ERP solicitando login al usuario. Mantener los cambios ya publicados mientras se completa alta, no afirmar Azure activo.

@@ -5,6 +5,7 @@ use InvalidArgumentException;
 final class InvoiceReader {
     public function __construct(private Records $records,private array $config,private string $directory) {}
     public function enabled(): bool { return ($this->config['enabled']??false)===true&&!empty($this->config['key'])&&!empty($this->config['endpoint']); }
+    public function limits(): array { return ($this->config['tier']??'F0')==='S0'?['mb'=>5,'pages'=>null]:['mb'=>4,'pages'=>2]; }
     private function endpoint(): string {
         $url=rtrim($this->config['endpoint']??'','/');
         if (!preg_match('~^https://[a-zA-Z0-9-]+\.cognitiveservices\.azure\.com$~D',$url)) throw new InvalidArgumentException('Configura un endpoint válido de Azure Document Intelligence.');
@@ -30,7 +31,8 @@ final class InvoiceReader {
         }
         if (($f['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK||!is_string($f['tmp_name']??null)||!is_uploaded_file($f['tmp_name'])) throw new InvalidArgumentException('No se ha recibido la factura.');
         $size=filesize($f['tmp_name']);$mime=(new \finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);
-        if (!$size||$size>5*1024*1024||!in_array($mime,['application/pdf','image/jpeg','image/png'],true)) throw new InvalidArgumentException('Sube un PDF, JPG o PNG de hasta 5 MB.');
+        $maxMb=$local===null?$this->limits()['mb']:5;
+        if (!$size||$size>$maxMb*1024*1024||!in_array($mime,['application/pdf','image/jpeg','image/png'],true)) throw new InvalidArgumentException('Sube un PDF, JPG o PNG de hasta '.$maxMb.' MB.');
         if (!is_dir($this->directory)&&!mkdir($this->directory,0700,true)&&!is_dir($this->directory)) throw new \RuntimeException('Almacenamiento no disponible.');
         $key=bin2hex(random_bytes(24));$path=$this->directory.'/'.$key;
         if (!move_uploaded_file($f['tmp_name'],$path)) throw new \RuntimeException('No se pudo guardar la factura.');chmod($path,0600);

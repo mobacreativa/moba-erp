@@ -12,6 +12,7 @@ require_once __DIR__.'/WorkOrders.php';
 require_once __DIR__.'/GeneralTasks.php';
 require_once __DIR__.'/Accounting.php';
 require_once __DIR__.'/InvoiceReader.php';
+require_once __DIR__.'/InvoiceSettings.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -35,7 +36,7 @@ try {
 
         $action = field($_GET,'api');
 
-        if ($action === 'account_load') { \Moba\Users::allow($actor,['admin']);$entries=$records->all('account_entry');$linked=array_column($entries,'invoice_id');$uploads=array_values(array_filter($records->all('invoice_upload'),fn($i)=>!in_array($i['id'],$linked,true)));$result=['csrf'=>$_SESSION['csrf'],'entries'=>$entries,'uploads'=>array_map(fn($i)=>array_intersect_key($i,array_flip(['id','name','status'])),$uploads),'reader_enabled'=>$reader->enabled()];
+        if ($action === 'account_load') { \Moba\Users::allow($actor,['admin']);$entries=$records->all('account_entry');$linked=array_column($entries,'invoice_id');$uploads=array_values(array_filter($records->all('invoice_upload'),fn($i)=>!in_array($i['id'],$linked,true)));$result=['csrf'=>$_SESSION['csrf'],'entries'=>$entries,'uploads'=>array_map(fn($i)=>array_intersect_key($i,array_flip(['id','name','status'])),$uploads),'reader_limits'=>$reader->limits(),'reader_enabled'=>$reader->enabled()];
         } elseif ($action === 'account_invoice_status') { $result=$reader->poll(field($_GET,'id'),$actor);
         } elseif ($action === 'account_invoice_file') { $reader->download(field($_GET,'id'),$actor);
         } elseif ($action === 'team_tasks') {
@@ -90,6 +91,7 @@ try {
 
         $result = match ($action) {
 
+            'account_ocr_config' => \Moba\InvoiceSettings::save($input,$actor,dirname(__DIR__).'/config/invoice-reader.php'),
             'account_invoice_local' => $reader->upload($_FILES['file']??[],$actor,$input),
             'account_invoice_upload' => $reader->upload($_FILES['file']??[],$actor),
             'account_trash' => (new \Moba\Accounting($records))->trash($input,$actor),

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__.'/../app/Accounting.php';
 require __DIR__.'/../app/InvoiceReader.php';
+require __DIR__.'/../app/InvoiceSettings.php';
 require __DIR__.'/../app/Records.php';
 require __DIR__.'/../app/Users.php';
 function check(bool $ok,string $label):void {if(!$ok)throw new LogicException($label);}
@@ -38,3 +39,17 @@ check(count($r->history('account_entry',$saved['id']))===4,'Trash and restore au
 $azure=Moba\InvoiceReader::fields(['analyzeResult'=>['documents'=>[['fields'=>['VendorName'=>['valueString'=>'Proveedor Azure SL'],'DueDate'=>['valueDate'=>'2026-12-31'],'InvoiceDate'=>['valueDate'=>'2026-11-17'],'TotalTax'=>['valueCurrency'=>['amount'=>21,'currencyCode'=>'EUR']]]]]]]);
 check($azure['fields']['party']==='Proveedor Azure SL'&&$azure['fields']['due_date']==='2026-12-31'&&$azure['fields']['tax']==='21.00','Azure vendor and due date mapping');
 echo "Trash, restore, audit, conflicts and Azure invoice fields OK\n";
+
+$settingsFile=tempnam(sys_get_temp_dir(),'moba-test-');
+try {
+    $settings=['endpoint'=>'https://test.cognitiveservices.azure.com/','key'=>str_repeat('a',32),'tier'=>'F0'];
+    reject(fn()=>Moba\InvoiceSettings::save($settings,['role'=>'sales'],$settingsFile));
+    $reply=Moba\InvoiceSettings::save($settings,$admin,$settingsFile);
+    check($reply===['configured'=>true],'No key in response');
+    $private=require $settingsFile;
+    check($private['key']===$settings['key']&&$private['enabled']&&$private['tier']==='F0','Private configuration persisted');
+    check((fileperms($settingsFile)&0777)===0600,'Private file permissions');
+} finally {unlink($settingsFile);}
+
+check((new Moba\InvoiceReader($r,[],"/tmp/unused"))->limits()===["mb"=>4,"pages"=>2],"F0 limits by default");
+check((new Moba\InvoiceReader($r,["tier"=>"S0"],"/tmp/unused"))->limits()===["mb"=>5,"pages"=>null],"S0 application limit");

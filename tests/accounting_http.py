@@ -55,6 +55,11 @@ sales,st=login('account-sales','sales-test-password')
 code,body,_=request(sales,'?view=accounting');assert code==200 and b'Proveedores' in body and b'accounting.js' not in body
 code,_,_=request(sales,'?view=customers');assert code==200
 code,_,_=request(sales,'?api=account_load');assert code==403
-for action in ('account_save','account_trash','account_restore','account_invoice_upload'):
+for action in ('account_save','account_trash','account_restore','account_invoice_upload','account_ocr_config'):
     code,_=api(sales,st,action,{});assert code==403
 print('Sales retains contacts access without financial access')
+
+code,_=api(admin,'wrong','account_ocr_config',{});assert code==403
+code,_=api(admin,csrf,'account_ocr_config',{'endpoint':'https://attacker.example','key':'a'*32,'tier':'F0'});assert code==422
+code,_=api(admin,csrf,'account_ocr_config',{'endpoint':'https://example.cognitiveservices.azure.com','key':'bad','tier':'F0'});assert code==422
+print('OCR configuration access and input validation OK')

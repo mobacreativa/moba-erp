@@ -3,6 +3,7 @@
 // Never commit the copy with credentials. Enable only after setting endpoint/key.
 return [
     'enabled' => false,
+    'tier' => 'F0',
     'endpoint' => 'https://YOUR-RESOURCE.cognitiveservices.azure.com',
     'key' => getenv('MOBA_INVOICE_READER_KEY') ?: '',
 ];
