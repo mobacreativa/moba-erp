@@ -25,6 +25,8 @@ header('X-Robots-Tag: noindex, nofollow, noarchive');
 $configFile = dirname(__DIR__) . '/config/local.php';
 if (!is_file($configFile)) { http_response_code(503); exit('Configura la aplicación siguiendo README.md.'); }
 $config = require $configFile;
+$invoiceConfigFile=dirname(__DIR__).'/config/invoice-reader.php';
+if (is_file($invoiceConfigFile)) { $config['invoice_reader']=require $invoiceConfigFile; }
 if (empty($config['admin_password_hash']) || empty($config['admin_username'])) { http_response_code(503); exit('Falta configurar el acceso del administrador.'); }
 if (($config['secure_cookie'] ?? true) && ($_SERVER['HTTPS'] ?? '') !== 'on') {
     http_response_code(426);
@@ -94,7 +96,7 @@ try {
             redirect('/?view=customers');
         }
     }
-    if ($actor && field($_GET,'view')==='accounting') { \Moba\Users::allow($actor,['admin']);require dirname(__DIR__).'/app/accounting-page.php';exit; }
+    if ($actor && field($_GET,'view')==='accounting') { \Moba\Users::allow($actor,['admin','sales']);require dirname(__DIR__).'/app/accounting-page.php';exit; }
     if ($actor && field($_GET,'view')==='tasks') { require dirname(__DIR__).'/app/tasks-page.php';exit; }
     if ($actor && ($actor['role']==='production' || field($_GET,'view')==='team')) { require dirname(__DIR__).'/app/team.php';exit; }
     if (!empty($_SESSION['authenticated']) && isset($_GET['edit'])) {
@@ -129,7 +131,7 @@ if (!empty($_SESSION['authenticated']) && (field($_GET,'view') === 'erp' || (fie
 <?php if (empty($_SESSION['authenticated'])): ?>
 <section class="login"><p class="eyebrow">MOBA CREATIVA</p><h1>Tu taller, organizado.</h1><p>Acceso privado a la gestión de clientes.</p><form method="post"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><label>Usuario<input name="username" required autocomplete="username" maxlength="80"></label><label>Contraseña<input type="password" name="password" required autocomplete="current-password"></label><button>Entrar</button></form></section>
 <?php else: ?>
-<p><a href="/?view=erp">Abrir presupuestos y catálogo →</a></p><p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
+<p><a href="/?view=accounting">← Volver a Contabilidad</a></p><p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
 <div class="layout"><section><form class="search" method="get"><input type="hidden" name="view" value="customers"><label>Buscar por nombre o NIF<input name="q" value="<?= e($query) ?>" maxlength="160" placeholder="Nombre o NIF"></label><button>Buscar</button></form>
 <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Contacto</th><th></th></tr></thead><tbody>
 <?php foreach ($rows as $row): ?><tr><td><strong><?= e($row['name']) ?></strong><small><?= e($row['tax_id']) ?></small></td><td><?= e($row['email']) ?><small><?= e($row['phone']) ?></small></td><td><a href="/?edit=<?= e($row['id']) ?>">Editar<span class="sr-only"> <?= e($row['name']) ?></span></a></td></tr><?php endforeach ?>

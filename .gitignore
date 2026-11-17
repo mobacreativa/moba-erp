@@ -6,3 +6,5 @@
 /storage/
 
 /public/vendor/
+
+/config/invoice-reader.php

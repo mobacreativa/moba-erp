@@ -20,6 +20,10 @@ code,body,_=request(admin,'?api=account_load');assert code==200
 j=json.loads(body)['data'];assert j['reader_enabled'] is False and 'uploads' in j
 code,j=api(admin,csrf,'account_save',dict(type='income',name='HTTP invoice',party='Test customer',date='2026-11-15',base='25.00',tax='0'));assert code==200
 assert j['data']['total_cents']==2500
+entry=j['data']
+code,j=api(admin,csrf,'account_trash',{'id':entry['id'],'version':entry['version']});assert code==200 and j['data']['deleted']
+code,j=api(admin,csrf,'account_restore',{'id':entry['id'],'version':entry['version']});assert code==409
+code,j=api(admin,csrf,'account_restore',{'id':entry['id'],'version':entry['version']+1});assert code==200 and not j['data']['deleted']
 for kind in ('account_entry','invoice_upload'):
     code,j=api(admin,csrf,'save',dict(kind=kind,data={'name':'Bypass'}));assert code==422
     code,body,_=request(admin,'?api=history&kind='+kind+'&id=abc');assert code==422
@@ -27,7 +31,9 @@ code,body,_=request(admin,'?api=load');assert 'account_entry' not in json.loads(
 worker,token=login('task-one','task-test-password')
 for action in ('account_load','account_invoice_status&id=abc','account_invoice_file&id=abc'):
     code,_,_=request(worker,'?api='+action);assert code==403
-code,_=api(worker,token,'account_save',{});assert code==403
+for action in ('account_save','account_trash','account_restore'):
+    code,_=api(worker,token,action,{});assert code==403
+    code,_=api(admin,'wrong',action,{});assert code==403
 code,_=api(admin,'wrong','account_save',{});assert code==403
 print('Accounting HTTP permissions, persistence and generic API isolation OK')
 
@@ -43,3 +49,12 @@ invoice_id=j['data']['id']
 code,body,_=request(admin,'?api=account_invoice_status&id='+invoice_id);assert code==200 and json.loads(body)['data']['fields']['party']=='Local supplier'
 code,body,headers=request(admin,'?api=account_invoice_file&id='+invoice_id);assert code==200 and body.startswith(b'%PDF-')
 print('Local invoice storage, type validation and download authorization OK')
+
+code,j=api(admin,csrf,'team_user',dict(username='account-sales',name='Sales CI',password='sales-test-password',role='sales',active=True));assert code==200
+sales,st=login('account-sales','sales-test-password')
+code,body,_=request(sales,'?view=accounting');assert code==200 and b'Proveedores' in body and b'accounting.js' not in body
+code,_,_=request(sales,'?view=customers');assert code==200
+code,_,_=request(sales,'?api=account_load');assert code==403
+for action in ('account_save','account_trash','account_restore','account_invoice_upload'):
+    code,_=api(sales,st,action,{});assert code==403
+print('Sales retains contacts access without financial access')

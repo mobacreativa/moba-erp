@@ -17,6 +17,7 @@ final class Accounting {
         Users::allow($actor,['admin']);
         $id=is_string($p['id']??null)?$p['id']:'';
         $old=$id!==''?$this->records->get('account_entry',$id):null;
+        if ($old['deleted']??false) throw new InvalidArgumentException('Restaura el movimiento desde la papelera antes de editarlo.');
         $type=$p['type']??'';$name=$p['name']??'';$party=$p['party']??'';$reference=$p['reference']??'';
         if (!in_array($type,['income','expense'],true)||!is_string($name)||trim($name)===''||mb_strlen($name)>190||!is_string($party)||trim($party)===''||mb_strlen($party)>190||!is_string($reference)||mb_strlen($reference)>100) throw new InvalidArgumentException('Indica concepto, cliente/proveedor y tipo válidos.');
         $date=self::date($p['date']??'');$due=self::date($p['due_date']??'',true);
@@ -27,5 +28,14 @@ final class Accounting {
         if ($invoiceId!=='') { $invoice=$this->records->get('invoice_upload',$invoiceId);if ($invoice['status']!=='succeeded') throw new InvalidArgumentException('Revisa primero la extracción.'); }
         $doc=['invoice_id'=>$invoiceId,'name'=>trim($name),'type'=>$type,'party'=>trim($party),'reference'=>trim($reference),'date'=>$date,'due_date'=>$due,'base_cents'=>$base,'tax_cents'=>$tax,'total_cents'=>$base+$tax,'currency'=>'EUR','paid'=>$paid,'paid_date'=>$paidDate,'actor'=>$actor['username']];
         return $this->records->save('account_entry',$doc,$id,(int)($p['version']??0));
+    }
+    public function trash(array $p,array $actor,bool $restore=false): array {
+        Users::allow($actor,['admin']);
+        if (!is_string($p['id']??null)||$p['id']==='') throw new InvalidArgumentException('Movimiento no válido.');
+        $doc=$this->records->get('account_entry',$p['id']);
+        $doc['deleted']=!$restore;
+        $doc['deleted_at']=$restore?'':gmdate('c');
+        $doc['actor']=$actor['username'];
+        return $this->records->save('account_entry',$doc,$p['id'],(int)($p['version']??0));
     }
 }

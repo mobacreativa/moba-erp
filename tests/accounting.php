@@ -26,3 +26,15 @@ check($updated['paid']&&$updated['version']===2,'Persist payment');
 try{$a->save($p,$admin);throw new LogicException('Accepted stale entry');}catch(RuntimeException $e){check($e->getCode()===409,'Conflict');}
 check(count($r->history('account_entry',$saved['id']))===2,'Financial edit history');
 echo "Accounting amounts, dates, permissions, persistence, concurrency and OCR mapping OK\n";
+
+$trash=['id'=>$updated['id'],'version'=>$updated['version']];
+reject(fn()=>$a->trash($trash,['role'=>'sales']));
+$deleted=$a->trash($trash,$admin);check($deleted['deleted']&&$deleted['total_cents']===12112,'Trash preserves amount');
+reject(fn()=>$a->save($p,$admin));
+try{$a->trash($trash,$admin,true);throw new LogicException('Accepted stale restore');}catch(RuntimeException $e){check($e->getCode()===409,'Restore conflict');}
+$restored=$a->trash(['id'=>$deleted['id'],'version'=>$deleted['version']],$admin,true);
+check(!$restored['deleted']&&$restored['paid']&&$restored['total_cents']===12112,'Restore payment and amounts');
+check(count($r->history('account_entry',$saved['id']))===4,'Trash and restore audit');
+$azure=Moba\InvoiceReader::fields(['analyzeResult'=>['documents'=>[['fields'=>['VendorName'=>['valueString'=>'Proveedor Azure SL'],'DueDate'=>['valueDate'=>'2026-12-31'],'InvoiceDate'=>['valueDate'=>'2026-11-17'],'TotalTax'=>['valueCurrency'=>['amount'=>21,'currencyCode'=>'EUR']]]]]]]);
+check($azure['fields']['party']==='Proveedor Azure SL'&&$azure['fields']['due_date']==='2026-12-31'&&$azure['fields']['tax']==='21.00','Azure vendor and due date mapping');
+echo "Trash, restore, audit, conflicts and Azure invoice fields OK\n";

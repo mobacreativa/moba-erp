@@ -75,6 +75,7 @@ jobs:
           PID=$!
           trap 'kill "$PID"' EXIT
           node tests/browser.cjs
+          node tests/azure_browser.cjs
           node tests/ocr_browser.cjs
       - uses: actions/upload-artifact@v4
         if: always() && matrix.php == '8.2'

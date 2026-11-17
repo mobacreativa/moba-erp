@@ -15,6 +15,8 @@ final class InvoiceReader {
         $headers=[];$ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>25,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_HTTPHEADER=>['Ocp-Apim-Subscription-Key: '.$this->config['key'],'Content-Type: application/octet-stream'],CURLOPT_HEADERFUNCTION=>function($ch,$line)use(&$headers){$p=explode(':',$line,2);if(count($p)===2)$headers[strtolower(trim($p[0]))]=trim($p[1]);return strlen($line);}]);
         if ($body!==null) { curl_setopt($ch,CURLOPT_POST,true);curl_setopt($ch,CURLOPT_POSTFIELDS,$body); }
         $result=curl_exec($ch);$code=curl_getinfo($ch,CURLINFO_RESPONSE_CODE);curl_close($ch);
+        if (in_array($code,[401,403],true)) throw new InvalidArgumentException('Azure ha rechazado el acceso. Revisa la clave, el endpoint y los permisos del recurso.');
+        if ($code===429) throw new InvalidArgumentException('Azure ha alcanzado su límite de uso. Espera antes de reintentar la lectura.');
         if ($result===false||!in_array($code,[200,202],true)) throw new InvalidArgumentException('El servicio de lectura no respondió correctamente. Inténtalo más tarde.');
         return [$headers,json_decode($result,true)??[]];
     }

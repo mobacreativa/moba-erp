@@ -13,8 +13,8 @@ const assert=require('node:assert/strict');
  const nav=page.getByRole('navigation',{name:'Secciones'});
  const dialog=page.getByRole('dialog');
  async function create(section,fields){
-  await nav.getByRole('button',{name:'Configuración general',exact:true}).click();
-  await page.locator('#content').getByRole('button',{name:section,exact:true}).click();
+  if(section==='Proveedores'){await nav.getByRole('link',{name:'Contabilidad',exact:true}).click();await page.getByRole('navigation',{name:'Contabilidad',exact:true}).getByRole('link',{name:'Proveedores',exact:true}).click();}
+  else{await nav.getByRole('button',{name:'Configuración general',exact:true}).click();await page.locator('#content').getByRole('button',{name:section,exact:true}).click();}
   await page.getByRole('button',{name:'+ Añadir',exact:true}).click();
   for(const [label,value] of fields)await dialog.getByLabel(label,{exact:true}).fill(value);
  }
@@ -78,6 +78,21 @@ const assert=require('node:assert/strict');
  await dialog.waitFor({state:'hidden'});
  await page.getByRole('button',{name:/Browser supplier.*Pagar/}).waitFor();
  await page.getByRole('cell',{name:'Browser expense',exact:false}).waitFor();
+ const monthValue=await page.locator('#month').inputValue();
+ const monthLabel=new Intl.DateTimeFormat('es-ES',{month:'long',year:'numeric'}).format(new Date(Number(monthValue.slice(0,4)),Number(monthValue.slice(5))-1,1));
+ assert((await page.getByRole('heading',{name:/Calendario de vencimientos/}).innerText()).includes(monthLabel));
+ assert(await page.locator('#invoice-azure').isDisabled());
+ const expenseRow=page.getByRole('row').filter({hasText:'Browser expense'});
+ const previousExpense=await page.locator('.grid article').filter({hasText:'Gastos sin IVA'}).innerText();
+ page.once('dialog',d=>d.accept());await expenseRow.getByRole('button',{name:'Eliminar',exact:true}).click();
+ await expenseRow.waitFor({state:'detached'});
+ assert.equal(await page.getByRole('button',{name:/Browser supplier.*Pagar/}).count(),0);
+ assert.notEqual(await page.locator('.grid article').filter({hasText:'Gastos sin IVA'}).innerText(),previousExpense);
+ await page.getByText('Papelera (1)',{exact:true}).click();await page.getByRole('button',{name:'Restaurar',exact:true}).click();
+ await expenseRow.waitFor();assert.equal(await page.locator('.grid article').filter({hasText:'Gastos sin IVA'}).innerText(),previousExpense);
+ await page.getByRole('button',{name:/Browser supplier.*Pagar/}).waitFor();
+ await page.locator('#month').fill('2027-01');await page.getByRole('heading',{name:/enero de 2027/}).waitFor();
+ await page.locator('#month').fill(monthValue);
  await page.screenshot({path:'/tmp/moba-accounting.png',fullPage:true});
  await page.goto('http://127.0.0.1:8080/?view=team');
  await page.getByRole('link',{name:'Configuración general',exact:true}).click();

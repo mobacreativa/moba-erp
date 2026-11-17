@@ -92,6 +92,8 @@ try {
 
             'account_invoice_local' => $reader->upload($_FILES['file']??[],$actor,$input),
             'account_invoice_upload' => $reader->upload($_FILES['file']??[],$actor),
+            'account_trash' => (new \Moba\Accounting($records))->trash($input,$actor),
+            'account_restore' => (new \Moba\Accounting($records))->trash($input,$actor,true),
             'account_save' => (new \Moba\Accounting($records))->save($input,$actor),
             'team_task_save' => $tasks->save($input,$actor),
             'team_task_upload' => $tasks->attach($input,$_FILES['file']??[],$actor),
