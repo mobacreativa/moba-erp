@@ -79,13 +79,24 @@ async function saveRecord(event){
 function captureDraft(){if(!$('quoteform'))return;Object.assign(draft,Object.fromEntries(new FormData($('quoteform'))));}
 function quoteEditor(){
   $('title').textContent=draft.id?`Presupuesto ${draft.name}`:'Nuevo presupuesto';
-  $('content').innerHTML=`<form id="quoteform" class="card"><div class="fields">${select('customer_id','Cliente',data.customers.map(c=>[c.id,c.name]),draft.customer_id)}${input('date','Fecha',draft.date,'date','required')}${input('valid_days','Validez (días)',draft.valid_days,'number','min="1"')}${input('payment','Forma de pago',draft.payment)}${area('notes','Observaciones para el cliente',draft.notes)}</div></form><div class="toolbar">${button('+ Configurar producto','configure')}${button('Guardar borrador','savequote')}</div><div class="card">${draft.lines.map((l,i)=>`<div class="toolbar"><strong>${esc(l.preview.description)}</strong><span>${l.preview.quantity} × ${money(l.preview.price)} = ${money(l.preview.total)}</span>${button('Quitar','removeline',i)}</div>`).join('')||'<p>Añade el primer producto o servicio.</p>'}</div>`;
+  $('content').innerHTML=`<form id="quoteform" class="card"><div class="fields">${select('customer_id','Cliente',data.customers.map(c=>[c.id,c.name]),draft.customer_id)}${input('date','Fecha',draft.date,'date','required')}${input('valid_days','Validez (días)',draft.valid_days,'number','min="1"')}${input('payment','Forma de pago',draft.payment)}${area('notes','Observaciones para el cliente',draft.notes)}</div></form><div class="toolbar">${button('Añadir producto','configure')}${button('Guardar borrador','savequote')}</div><div class="card">${draft.lines.map((l,i)=>`<div class="toolbar"><strong>${esc(l.preview.description)}</strong><span>${l.preview.quantity} × ${money(l.preview.price)} = ${money(l.preview.total)}</span>${button('Quitar','removeline',i)}</div>`).join('')||'<p>Añade el primer producto o servicio.</p>'}</div>`;
 }
 function configure(){
   captureDraft();calculated=null;
-  $('fields').innerHTML=`<h2>Configurar producto</h2><div class="fields">${select('product_id','Producto',data.product.filter(x=>x.active).map(x=>[x.id,(x.reference?x.reference+' · ':'')+x.name]))}</div><div id="configuration"></div><p id="formerror" class="error" hidden></p>`;
+  $('fields').innerHTML=`<h2>Añadir producto</h2><div class="fields"><label>Buscar producto<input type="search" id="product-search" placeholder="Nombre o referencia" autocomplete="off"></label>${select('product_id','Producto',data.product.filter(x=>x.active).map(x=>[x.id,(x.reference?x.reference+' · ':'')+x.name]))}</div><p id="product-search-status" role="status"></p><div id="configuration"></div><p id="formerror" class="error" hidden></p>`;
   editing={kind:'configuration'};$('editor').showModal();$('editform').querySelector('button[type=submit]').textContent='Añadir al presupuesto';
 }
+function filterQuoteProducts(){
+  const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es');
+  const terms=normalize($('product-search').value).trim().split(/\s+/).filter(Boolean);
+  const products=data.product.filter(p=>p.active&&terms.every(term=>normalize(p.name+' '+(p.reference||'')).includes(term)));
+  const selector=$('editform').elements.product_id,previous=selector.value;
+  selector.innerHTML='<option value="">Seleccionar…</option>'+products.map(p=>`<option value="${esc(p.id)}">${esc((p.reference?p.reference+' · ':'')+p.name)}</option>`).join('');
+  selector.value=products.some(p=>p.id===previous)?previous:'';
+  if(selector.value!==previous){calculated=null;productConfiguration();}
+  $('product-search-status').textContent=products.length?`${products.length} productos encontrados.`:'No hay productos que coincidan con la búsqueda.';
+}
+$('editform').addEventListener('input',event=>{if(event.target.id==='product-search')filterQuoteProducts();});
 function productConfiguration(){
   const p=find('product',$('editform').elements.product_id.value);if(!p){$('configuration').innerHTML='';return;}
   let html=`<p class="muted">${esc(p.notes||'')}</p><div class="fields">${input('quantity','Cantidad',p.min_qty||1,'number','min="1" step="1" required')}${p.calculation==='area'?input('width_cm','Ancho cm','', 'number','min="0.01" step="0.01" required')+input('height_cm','Alto cm','','number','min="0.01" step="0.01" required'):''}${input('unit_cost','Coste unitario manual (vacío = catálogo)','','number','min="0" step="0.0001"')}${input('handling','Manipulación €/ud',0,'number','min="0" step="0.01"')}${input('setup','Preparación total €',0,'number','min="0" step="0.01"')}${input('design','Diseño total €',0,'number','min="0" step="0.01"')}${input('supplements_total','Suplementos tallas / colores total €',0,'number','min="0" step="0.01"')}${select('mode','Tipo de cálculo',[['margin','Margen sobre venta'],['markup','Recargo sobre coste']],p.mode||'margin',false)}${input('margin','Porcentaje (vacío = reglas del catálogo)','','number','min="0" step="0.01"')}${input('price','PVP manual sin IVA (vacío = automático)','','number','min="0" step="0.01"')}${input('discount','Descuento %',0,'number','min="0" max="100" step="0.01"')}${input('vat','IVA %',p.vat??21,'number','min="0" max="100" step="0.01"')}${area('description','Descripción comercial opcional (sin costes ni medidas DTF)')}</div>`;
