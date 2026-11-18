@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),p=require('../public/invoice-fields.js');
+const f=p.parse('Proveedor: Taller Demo SL\nFactura numero F-123\nFecha de factura: 16/11/2026\nVencimiento: 16/12/2026\nBase imponible: 1.234,56 EUR\nIVA 21% 259,26 EUR\nTotal factura: 1.493,82 EUR').fields;
+assert.equal(f.party,'Taller Demo SL');assert.equal(f.reference,'F-123');assert.equal(f.date,'2026-11-16');assert.equal(f.due_date,'2026-12-16');assert.equal(f.base,'1234.56');assert.equal(f.tax,'259.26');assert.equal(f.invoice_total,'1493.82');
+assert.equal(p.parse('IVA 21%').fields.tax,'');
+assert.equal(p.parse('Base imponible: 100,00\nBase imponible: 200,00').fields.base,'');
+assert.equal(p.parse('Fecha factura: 31/02/2026').fields.date,'');
+assert.equal(p.parse('Vencimiento: 16/12/2026').fields.date,'');
+assert.equal(p.parse('Total: 121,00').fields.tax,'');
+assert.equal(p.parse('IVA: 0,00').fields.tax,'0.00');
+assert(p.parse('Base imponible: 100,00\nIVA: 21,00\nTotal: 120,00').warnings.some(x=>x.includes('no coincide')));
+console.log('Conservative invoice field extraction OK');
