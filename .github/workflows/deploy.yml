@@ -47,8 +47,13 @@ jobs:
           }
           echo "Repositorio en el servidor: $REPO_ROOT"
           api VersionControl/update --data-urlencode "branch=main"
-          api VersionControlDeployment/create
-          echo "Despliegue solicitado a cPanel."
+          if [ "$REPO_ROOT" = "/home/$CPANEL_USER/moba-erp" ]; then
+            # El clon de cPanel es la propia carpeta de la web: el pull ya es el despliegue.
+            echo "Repositorio actualizado; la web se sirve desde el propio clon."
+          else
+            api VersionControlDeployment/create
+            echo "Despliegue solicitado a cPanel."
+          fi
       - name: Comprobar la web
         run: |
           for i in $(seq 1 12); do

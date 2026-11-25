@@ -28,7 +28,9 @@ Las credenciales y los datos reales nunca se añaden al repositorio. No volver a
 1. En cPanel > Manage API Tokens, crear un token llamado `github-deploy`, sin caducidad o con una fecha anotada para renovarlo. El token da acceso completo a la cuenta de cPanel: no compartirlo ni pegarlo en el chat.
 2. En GitHub > Settings > Environments, crear el entorno `production` y, en Deployment branches, limitarlo a `main`.
 3. En ese entorno, añadir los secretos `CPANEL_HOST` (servidor de cPanel, por ejemplo el que aparece en la URL de acceso, sin `https://` ni puerto), `CPANEL_USER` (usuario de cPanel) y `CPANEL_TOKEN` (el token).
-4. Si el repositorio no está clonado en `/home/<usuario>/repositories/moba-erp`, añadir la variable `CPANEL_REPO_ROOT` con la ruta correcta.
+4. Si el repositorio no está clonado en `/home/<usuario>/repositories/moba-erp`, añadir la variable de entorno `CPANEL_REPO_ROOT` con la ruta que muestra cPanel > Git Version Control.
+
+Instalación actual: el clon de cPanel está en `/home/mobaewow/moba-erp`, que es también la carpeta de la web (raíz del subdominio: `moba-erp/public`). En ese caso el workflow solo hace Update from Remote, porque traer los cambios ya actualiza la web; `.cpanel.yml` no se usa y no hay que pulsar Deploy HEAD Commit. `.git`, `tests` y `.github` quedan fuera de `public/` y no son accesibles desde la web. `config/local.php` está en `.gitignore`, así que el pull no lo toca. No editar en el servidor archivos versionados: si hay cambios locales, cPanel no podrá actualizar.
 5. Lanzar Actions > Deploy > Run workflow y comprobar que termina en verde.
 
 Si falla con un error de conexión al puerto 2083, el hosting puede estar bloqueando las IP de GitHub. En ese caso, consultar con soporte de Namecheap o volver al despliegue manual.
