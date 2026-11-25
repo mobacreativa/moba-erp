@@ -16,13 +16,16 @@ check($u->login('worker-test','wrong')===null,'Wrong password');
 $identity=$u->login('worker-test','unique-test-password');check($identity!==null,'Worker login');
 denied(fn()=>$u->save(['username'=>'bad'],$worker));
 denied(fn()=>$w->save(['name'=>'Forbidden'],$worker));
-$order=$w->save(['name'=>'Print shirts','instructions'=>'30 red XL, chest logo','due_date'=>'2026-10-05','assignee_id'=>$worker['id']],$root);
+$order=$w->save(['name'=>'Print shirts','instructions'=>'30 red XL, chest logo','due_date'=>'2026-10-05','assignee_id'=>$worker['id'],'items'=>[['product'=>'Shirts','quantity'=>'30'],['product'=>'Mugs','quantity'=>12]]],$root);
 check(count($w->all($worker))===1 && count($w->all($other))===0,'Assignment isolation');
 denied(fn()=>$w->get($order['id'],$other));
 denied(fn()=>$w->progress(['id'=>$order['id'],'version'=>1,'status'=>'completed'],$other));
 $updated=$w->progress(['id'=>$order['id'],'version'=>1,'status'=>'in_progress','progress'=>'Cutting'],$worker);
+check($updated['items']===[['product'=>'Shirts','quantity'=>30],['product'=>'Mugs','quantity'=>12]],'Products preserved on progress');
 check($updated['status']==='in_progress' && count($r->history('work_order',$order['id']))===2,'Progress history');
 try{$w->progress(['id'=>$order['id'],'version'=>1,'status'=>'completed'],$worker);throw new LogicException('Lost update');}catch(RuntimeException $e){check($e->getCode()===409,'Version conflict');}
+foreach([0,-1,1.5,'abc'] as $bad)denied(fn()=>$w->save(['name'=>'Bad','assignee_id'=>$worker['id'],'items'=>[['product'=>'Test','quantity'=>$bad]]],$root));
+denied(fn()=>$w->save(['name'=>'Bad','assignee_id'=>$worker['id'],'items'=>[['product'=>'','quantity'=>1]]],$root));
 $session=['authenticated'=>true,'user_id'=>$worker['id'],'user_version'=>$identity['session_version']];
 check($u->current($session)!==null,'Active session');
 $worker['password']='replacement-password';$changed=$u->save($worker,$root);

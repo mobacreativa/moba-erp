@@ -36,7 +36,16 @@ final class WorkOrders
         }
         $payment=$input['payment_method'] ?? ($old['payment_method'] ?? '');
         if (!in_array($payment,['','cash','invoiced'],true)) { throw new InvalidArgumentException('Forma de pago no válida.'); }
-        $doc=['customer_id'=>$customerId,'customer_name'=>$customerName,'payment_method'=>$payment,'name'=>$name,'instructions'=>$instructions,'due_date'=>$date,'assignee_id'=>$assignee,'assignee_name'=>$user['name'],'quote_id'=>$quoteId,'quote_name'=>$quoteName,'status'=>$old['status'] ?? 'pending','progress'=>$old['progress'] ?? '', 'actor'=>$actor['username']];
+        $items=$input['items']??($old['items']??[]);
+        if (!is_array($items)||!array_is_list($items)||count($items)>100) throw new InvalidArgumentException('Añade como máximo 100 productos.');
+        $clean=[];
+        foreach($items as $item){
+            if(!is_array($item)||!is_string($item['product']??null)||trim($item['product'])===''||mb_strlen($item['product'])>190) throw new InvalidArgumentException('Indica el producto en cada línea.');
+            $quantity=filter_var($item['quantity']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]);
+            if($quantity===false) throw new InvalidArgumentException('La cantidad debe ser un número entero mayor que cero.');
+            $clean[]=['product'=>trim($item['product']),'quantity'=>$quantity];
+        }
+        $doc=['items'=>$clean,'customer_id'=>$customerId,'customer_name'=>$customerName,'payment_method'=>$payment,'name'=>$name,'instructions'=>$instructions,'due_date'=>$date,'assignee_id'=>$assignee,'assignee_name'=>$user['name'],'quote_id'=>$quoteId,'quote_name'=>$quoteName,'status'=>$old['status'] ?? 'pending','progress'=>$old['progress'] ?? '', 'actor'=>$actor['username']];
         return $this->records->save('work_order',$doc,$id,(int)($input['version'] ?? 0));
     }
     public function progress(array $input,array $actor): array {
