@@ -1,0 +1,52 @@
+name: Deploy
+# Despliega en cPanel cuando la CI de un push a main termina en verde.
+# También se puede lanzar a mano desde Actions > Deploy > Run workflow.
+on:
+  workflow_run:
+    workflows: ["PHP and MariaDB"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Actualizar repositorio y desplegar con cPanel
+        env:
+          CPANEL_HOST: ${{ secrets.CPANEL_HOST }}
+          CPANEL_USER: ${{ secrets.CPANEL_USER }}
+          CPANEL_TOKEN: ${{ secrets.CPANEL_TOKEN }}
+          REPO_ROOT: ${{ vars.CPANEL_REPO_ROOT }}
+        run: |
+          set -euo pipefail
+          : "${CPANEL_HOST:?Falta el secreto CPANEL_HOST}" "${CPANEL_USER:?Falta el secreto CPANEL_USER}" "${CPANEL_TOKEN:?Falta el secreto CPANEL_TOKEN}"
+          REPO_ROOT="${REPO_ROOT:-/home/$CPANEL_USER/repositories/moba-erp}"
+          api() {
+            local out
+            out=$(curl -sS --fail-with-body --max-time 120 \
+              -H "Authorization: cpanel $CPANEL_USER:$CPANEL_TOKEN" \
+              "https://$CPANEL_HOST:2083/execute/$1" --data-urlencode "repository_root=$REPO_ROOT" "${@:2}")
+            if ! jq -e '.status == 1' >/dev/null <<<"$out"; then
+              echo "::error::cPanel $1 falló"; jq '{errors, messages}' <<<"$out" || echo "$out"; exit 1
+            fi
+          }
+          echo "Repositorio en el servidor: $REPO_ROOT"
+          api VersionControl/update --data-urlencode "branch=main"
+          api VersionControlDeployment/create
+          echo "Despliegue solicitado a cPanel."
+      - name: Comprobar la web
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://erp.mobacreativa.com/ || true)
+            [ "$code" = 200 ] && { echo "La web responde 200."; exit 0; }
+            sleep 10
+          done
+          echo "::error::La web no responde 200 (último código: $code)"; exit 1

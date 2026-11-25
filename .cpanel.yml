@@ -1,0 +1,11 @@
+---
+# Despliegue con cPanel > Git Version Control > "Deploy HEAD Commit".
+# Copia solo lo necesario a ~/moba-erp (raíz del subdominio: ~/moba-erp/public).
+# No copia .git, .github ni tests, y nunca toca config/local.php.
+deployment:
+  tasks:
+    - export DEPLOYPATH="$HOME/moba-erp"
+    - /bin/mkdir -p "$DEPLOYPATH/config"
+    - /bin/cp -R app bin database public "$DEPLOYPATH/"
+    - /bin/cp config/local.example.php "$DEPLOYPATH/config/"
+    - /bin/cp .htaccess "$DEPLOYPATH/"
