@@ -30,12 +30,19 @@ jobs:
           : "${CPANEL_HOST:?Falta el secreto CPANEL_HOST}" "${CPANEL_USER:?Falta el secreto CPANEL_USER}" "${CPANEL_TOKEN:?Falta el secreto CPANEL_TOKEN}"
           REPO_ROOT="${REPO_ROOT:-/home/$CPANEL_USER/repositories/moba-erp}"
           api() {
-            local out
-            out=$(curl -sS --fail-with-body --max-time 120 \
+            local out code
+            out=$(curl -sS --max-time 120 -w '\n%{http_code}' \
               -H "Authorization: cpanel $CPANEL_USER:$CPANEL_TOKEN" \
-              "https://$CPANEL_HOST:2083/execute/$1" --data-urlencode "repository_root=$REPO_ROOT" "${@:2}")
-            if ! jq -e '.status == 1' >/dev/null <<<"$out"; then
-              echo "::error::cPanel $1 falló"; jq '{errors, messages}' <<<"$out" || echo "$out"; exit 1
+              "https://$CPANEL_HOST:2083/execute/$1" --data-urlencode "repository_root=$REPO_ROOT" "${@:2}") \
+              || { echo "::error::No se pudo conectar con $CPANEL_HOST:2083"; exit 1; }
+            code=${out##*$'\n'}; out=${out%$'\n'*}
+            if [ "$code" != 200 ] || ! jq -e '.status == 1' >/dev/null 2>&1 <<<"$out"; then
+              echo "::error::cPanel $1 falló (HTTP $code)"
+              case "$code" in
+                401|403) echo "cPanel rechaza las credenciales: revisar CPANEL_USER (usuario de cPanel, no el de Namecheap) y CPANEL_TOKEN (token completo, sin espacios).";;
+              esac
+              jq '{errors, messages}' <<<"$out" 2>/dev/null || sed -e 's/<[^>]*>//g' <<<"$out" | grep -v '^\s*$' | head -20
+              exit 1
             fi
           }
           echo "Repositorio en el servidor: $REPO_ROOT"
