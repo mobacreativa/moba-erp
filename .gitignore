@@ -2,3 +2,9 @@
 /.env
 /vendor/
 *.log
+
+/storage/
+
+/public/vendor/
+
+/config/invoice-reader.php

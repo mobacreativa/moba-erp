@@ -1,0 +1,77 @@
+'use strict';
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const eur=c=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(c/100);
+const today=new Date().toLocaleDateString('en-CA');let month=today.slice(0,7),data,editing;
+async function api(action,payload){const r=await fetch('/?api='+action,payload?{method:'POST',body:new URLSearchParams({csrf:data.csrf,payload:JSON.stringify(payload)})}:{});const j=await r.json();if(!j.ok)throw Error(j.error);return j.data;}
+async function load(){data=await api('account_load');$('notice').textContent='';render();}
+function render(){const active=data.entries.filter(e=>!e.deleted),rows=active.filter(e=>e.date.startsWith(month)),sum=(rs,k)=>rs.reduce((n,e)=>n+e[k],0);const income=rows.filter(e=>e.type==='income'),expense=rows.filter(e=>e.type==='expense');const pending=active.filter(e=>!e.paid);const cash=active.filter(e=>e.paid&&e.paid_date.startsWith(month));
+ $('content').innerHTML=`<div class="toolbar"><button id="configure-ocr">Configurar Azure</button><label>Mes<input type="month" id="month" value="${month}"></label><button data-new="income">+ Ingreso</button><button data-new="expense">+ Gasto</button><label>Leer factura de gasto<input type="file" id="invoice-azure" accept=".pdf,.jpg,.jpeg,.png" ${data.reader_enabled?'':'disabled'}></label><p>${data.reader_enabled?'Azure Document Intelligence: la factura se enviará a Microsoft para detectar proveedor, fecha, base, IVA y vencimiento. Revisa los datos antes de guardar.':'Azure pendiente de conexión. El registro manual sigue disponible.'}</p><p>Azure: hasta ${data.reader_limits?.mb||4} MB por archivo.${data.reader_limits?.pages?' El plan gratuito solo lee las dos primeras páginas; comprueba que contienen todos los datos.':''}</p><details><summary>Lectura local alternativa</summary><label>Leer en este navegador<input type="file" id="invoice" accept=".pdf,.jpg,.jpeg,.png"></label><p>PDF, JPG o PNG, hasta 5 MB y 10 páginas.</p></details><button id="cancel-reading" hidden>Cancelar lectura</button></div><section class="card"><h2>Facturas pendientes de registrar</h2>${(data.uploads||[]).filter(i=>!i.deleted).map(i=>`<p>${esc(i.name)} <button data-resume="${i.id}">Revisar lectura</button> <button data-invoice-trash="${i.id}">Eliminar</button> <a href="/?api=account_invoice_file&amp;id=${i.id}">Original</a></p>`).join('')||'<p>No hay facturas pendientes.</p>'}<details><summary>Facturas eliminadas (${(data.uploads||[]).filter(i=>i.deleted).length})</summary><p>Puedes recuperar estas facturas antes de registrarlas. No afectan a los movimientos ni a los totales.</p>${(data.uploads||[]).filter(i=>i.deleted).map(i=>`<p>${esc(i.name)} <button data-invoice-restore="${i.id}">Restaurar factura</button></p>`).join('')}</details></section><div class="grid">${[['Ingresos sin IVA',sum(income,'base_cents')],['Gastos sin IVA',sum(expense,'base_cents')],['Diferencia sin IVA',sum(income,'base_cents')-sum(expense,'base_cents')],['Cobrado (con IVA)',sum(cash.filter(e=>e.type==='income'),'total_cents')],['Pagado (con IVA)',sum(cash.filter(e=>e.type==='expense'),'total_cents')]].map(([t,n])=>`<article class="card">${t}<strong class="metric">${eur(n)}</strong></article>`).join('')}</div><p class="muted">Registros del mes seleccionado. Cobros y pagos se calculan por su fecha efectiva. Presupuestos y pedidos no se contabilizan automáticamente.</p><section class="card"><h2>Ingresos y gastos del mes</h2>${[['Ingresos',sum(income,'base_cents')],['Gastos',sum(expense,'base_cents')]].map(([t,n])=>`<label>${t}: ${eur(n)}<meter min="0" max="${Math.max(sum(income,'base_cents'),sum(expense,'base_cents'),1)}" value="${n}"></meter></label>`).join('')}</section><section class="card"><h2>Calendario de vencimientos pendientes · ${esc(new Intl.DateTimeFormat('es-ES',{month:'long',year:'numeric'}).format(new Date(Number(month.slice(0,4)),Number(month.slice(5))-1,1)))}</h2>${calendar(pending)}<p>Sin fecha de vencimiento: ${pending.filter(e=>!e.due_date).length}. Vencidos: ${pending.filter(e=>e.due_date&&e.due_date<today).length}.</p></section><section class="card scroll"><h2>Movimientos del mes</h2><table><thead><tr><th>Fecha</th><th>Concepto / tercero</th><th>Tipo</th><th>Base</th><th>IVA</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody>${rows.map(e=>`<tr><td>${esc(e.date)}</td><td>${esc(e.name)}<small>${esc(e.party)} · ${esc(e.reference)}</small></td><td>${e.type==='income'?'Ingreso':'Gasto'}</td><td>${eur(e.base_cents)}</td><td>${eur(e.tax_cents)}</td><td>${eur(e.total_cents)}</td><td>${e.paid?(e.type==='income'?'Cobrado':'Pagado'):'Pendiente'}</td><td><button data-edit="${e.id}">Editar</button> <button data-trash="${e.id}">Eliminar</button></td></tr>`).join('')||'<tr><td colspan="8">No hay movimientos en este mes.</td></tr>'}</tbody></table></section><details class="card"><summary>Papelera (${data.entries.filter(e=>e.deleted).length})</summary><p>Los movimientos eliminados no se incluyen en los totales ni en el calendario. Puedes restaurarlos con su factura original.</p>${data.entries.filter(e=>e.deleted).map(e=>`<p>${esc(e.date)} · ${esc(e.name)} · ${esc(e.party)} · ${eur(e.total_cents)} <button data-restore="${e.id}">Restaurar</button></p>`).join('')}</details>`;
+}
+function calendar(rows){const [y,m]=month.split('-').map(Number),offset=(new Date(y,m-1,1).getDay()+6)%7,days=new Date(y,m,0).getDate();return `<div class="calendar">${['L','M','X','J','V','S','D'].map(d=>`<strong>${d}</strong>`).join('')}${'<div></div>'.repeat(offset)}${Array.from({length:days},(_,i)=>{const date=month+'-'+String(i+1).padStart(2,'0');return `<div class="calendar-day"><b>${i+1}</b>${rows.filter(e=>e.due_date===date).map(e=>`<button class="due ${e.type==='income'?'income':'expense'}" data-edit="${e.id}">${esc(e.party)}<small>${eur(e.total_cents)} · ${e.type==='income'?'Cobrar':'Pagar'}${date<today?' · Vencido':''}</small></button>`).join('')}</div>`;}).join('')}</div>`;}
+const input=(k,label,v='',type='text',extra='')=>`<label>${label}<input name="${k}" type="${type}" value="${esc(v)}" ${extra}></label>`;
+function edit(id,type,detected){editing=detected||data.entries.find(e=>e.id===id)||{type,date:today};const e=editing;$('entryerror').textContent='';$('fields').innerHTML=`<h2>${e.type==='income'?'Ingreso':'Gasto'}</h2><div class="fields">${input('name','Concepto',e.name,'text','required maxlength="190"')}${input('party',e.type==='income'?'Cliente':'Proveedor',e.party,'text','required maxlength="190"')}${input('reference','Número de factura',e.reference,'text','maxlength="100"')}${input('date',e.type==='income'?'Fecha del ingreso':'Fecha de compra / factura',e.date,'date','required')}${input('base','Base imponible (EUR)',e.base_cents==null?'':(e.base_cents/100).toFixed(2),'number','required min="0" step="0.01"')}${input('tax','IVA (importe en EUR; 0 si no tiene)',e.tax_cents==null?'':(e.tax_cents/100).toFixed(2),'number','required min="0" step="0.01"')}${input('due_date','Fecha de vencimiento',e.due_date,'date')}<label><input type="checkbox" name="paid" ${e.paid?'checked':''}>${e.type==='income'?'Cobrado':'Pagado'}</label>${input('paid_date','Fecha efectiva de cobro / pago',e.paid_date,'date')}</div><p>${e.invoice_id?`<a href="/?api=account_invoice_file&amp;id=${encodeURIComponent(e.invoice_id)}">Descargar factura original</a>`:''}</p><p>${e.detected_total?`Total detectado en el documento: ${esc(e.detected_total)} EUR. Comprueba que coincide con base + IVA.`:''}</p><p>${esc(e.localWarning||'')}</p>${e.localText?`<details><summary>Texto leído para comprobar los datos</summary><pre class="preserve-lines">${esc(e.localText)}</pre></details>`:''}<p>Los importes se registran en EUR. Revisa los datos antes de guardar.</p>`;$('editor').showModal();}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.new)edit('',b.dataset.new);if(b.dataset.edit)edit(b.dataset.edit);});
+document.addEventListener('change',e=>{if(e.target.id==='month'&&/^\d{4}-\d{2}$/.test(e.target.value)){month=e.target.value;render();}});
+$('cancel').onclick=()=>$('editor').close();
+$('entryform').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const f=new FormData(e.target),p=Object.fromEntries(f);p.paid=f.has('paid');p.type=editing.type;p.invoice_id=editing.invoice_id||'';p.id=editing.id||'';p.version=editing.version||0;if(editing.localFile&&!editing.invoice_id){const form=new FormData();form.set('csrf',data.csrf);form.set('payload',JSON.stringify(editing.localFields||{}));form.set('file',editing.localFile);const response=await fetch('/?api=account_invoice_local',{method:'POST',body:form}),j=await response.json();if(!j.ok)throw Error(j.error);editing.invoice_id=j.data.id;editing.localFile=null;p.invoice_id=j.data.id;}await api('account_save',p);$('editor').close();await load();}catch(error){$('entryerror').textContent=error.message;}finally{b.disabled=false;}};
+load().catch(e=>$('notice').textContent=e.message);
+
+let reading=false;
+async function readInvoice(id){
+ if(reading)return;reading=true;$('notice').textContent='Leyendo factura…';
+ try{let result;for(let n=0;n<25;n++){result=await api('account_invoice_status&id='+encodeURIComponent(id));if(result.status==='succeeded')break;await new Promise(resolve=>setTimeout(resolve,2000));}
+ if(result?.status!=='succeeded')throw Error('La lectura sigue en proceso. Usa Revisar lectura más tarde; no vuelvas a subir la factura.');
+ const f=result.fields;if(f.currency&&f.currency!=='EUR')throw Error('La factura no está en EUR; requiere conversión y registro manual.');
+ edit('','expense',{type:'expense',name:'Factura '+(f.reference||''),party:f.party,reference:f.reference,date:f.date,due_date:f.due_date,base_cents:f.base===''?null:Math.round(Number(f.base)*100),tax_cents:f.tax===''?null:Math.round(Number(f.tax)*100),invoice_id:result.id,detected_total:f.invoice_total,localWarning:Object.entries(result.confidence||{}).some(([,v])=>v!==null&&v<0.8)?'Azure indica baja confianza en algunos campos. Contrasta los datos con el original.':''});
+ $('notice').textContent='Revisa los datos detectados antes de guardar. Los campos no detectados quedan vacíos.';
+ }catch(error){$('notice').textContent=error.message;}finally{reading=false;}
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-resume]');if(b)readInvoice(b.dataset.resume);});
+let localController;
+document.addEventListener('click',e=>{if(e.target.id==='cancel-reading')localController?.abort();});
+document.addEventListener('change',async e=>{
+ if(e.target.id!=='invoice'||!e.target.files[0]||reading)return;
+ const file=e.target.files[0];reading=true;localController=new AbortController();const signal=localController.signal;e.target.disabled=true;$('cancel-reading').hidden=false;
+ try{const result=await LocalInvoice.read(file,t=>$('notice').textContent=t,signal);const f=result.fields;
+ edit('','expense',{type:'expense',name:'Factura '+(f.reference||file.name),party:f.party,reference:f.reference,date:f.date,due_date:f.due_date,base_cents:f.base===''?null:Math.round(Number(f.base)*100),tax_cents:f.tax===''?null:Math.round(Number(f.tax)*100),detected_total:f.invoice_total,localFile:file,localFields:f,localWarning:result.warnings.join(' '),localText:result.text});
+ $('notice').textContent='Lectura local terminada. El original se subirá únicamente al ERP al guardar el gasto.';
+ }catch(error){$('notice').textContent=signal.aborted?'Lectura cancelada. No se ha subido la factura.':'No se ha podido leer: '+error.message+' Puedes registrar el gasto manualmente.';}
+ finally{reading=false;localController=null;if($('invoice')){$('invoice').disabled=false;$('invoice').value='';}if($('cancel-reading'))$('cancel-reading').hidden=true;}
+});
+
+document.addEventListener('click',async event=>{
+ const button=event.target.closest('[data-trash],[data-restore]');if(!button)return;
+ const restore=!!button.dataset.restore,entry=data.entries.find(e=>e.id===(button.dataset.restore||button.dataset.trash));
+ if(!entry||(!restore&&!confirm('¿Mover «'+entry.name+'» a la papelera? Dejará de contar en los totales y vencimientos. Podrás restaurarlo.')))return;
+ button.disabled=true;
+ try{await api(restore?'account_restore':'account_trash',{id:entry.id,version:entry.version});await load();$('notice').textContent=restore?'Movimiento restaurado.':'Movimiento enviado a la papelera.';}
+ catch(error){$('notice').textContent=error.message;button.disabled=false;}
+});
+document.addEventListener('change',async event=>{
+ if(event.target.id!=='invoice-azure'||!event.target.files[0]||reading)return;
+ const file=event.target.files[0];reading=true;event.target.disabled=true;
+ try{
+  if(file.size>(data.reader_limits?.mb||4)*1024*1024)throw Error('El archivo supera el límite de Azure: '+(data.reader_limits?.mb||4)+' MB.');
+  $('notice').textContent='Enviando factura a Azure Document Intelligence…';
+  const form=new FormData();form.set('csrf',data.csrf);form.set('payload','{}');form.set('file',file);
+  const response=await fetch('/?api=account_invoice_upload',{method:'POST',body:form});const result=await response.json();
+  if(!result.ok)throw Error(result.error);
+  reading=false;await load();await readInvoice(result.data.id);
+ }catch(error){$('notice').textContent=error.message;}
+ finally{reading=false;const input=$('invoice-azure');if(input){input.disabled=!data.reader_enabled;input.value='';}}
+});
+
+document.addEventListener('click',event=>{if(event.target.id==='configure-ocr'){$('ocrform').reset();$('ocrerror').textContent='';$('ocrsettings').showModal();}});
+$('ocrcancel').onclick=()=>{$('ocrform').reset();$('ocrsettings').close();};
+$('ocrsettings').addEventListener('close',()=>$('ocrform').reset());
+$('ocrform').onsubmit=async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{await api('account_ocr_config',Object.fromEntries(new FormData(event.target)));$('ocrform').reset();$('ocrsettings').close();await load();$('notice').textContent='Conexión guardada. Sube una factura de prueba para comprobar la lectura.';}catch(error){$('ocrerror').textContent=error.message;}finally{button.disabled=false;}};
+
+
+document.addEventListener('click',async event=>{
+ const button=event.target.closest('[data-invoice-trash],[data-invoice-restore]');if(!button)return;
+ const restore=!!button.dataset.invoiceRestore,invoice=(data.uploads||[]).find(i=>i.id===(button.dataset.invoiceRestore||button.dataset.invoiceTrash));
+ if(!invoice||(!restore&&!confirm('¿Eliminar «'+invoice.name+'» de las facturas pendientes? Podrás recuperarla en Facturas eliminadas.')))return;
+ button.disabled=true;
+ try{await api(restore?'account_invoice_restore':'account_invoice_trash',{id:invoice.id,version:invoice.version});await load();$('notice').textContent=restore?'Factura restaurada en pendientes.':'Factura eliminada de pendientes. Puedes recuperarla en Facturas eliminadas.';}
+ catch(error){$('notice').textContent=error.message;button.disabled=false;}
+});

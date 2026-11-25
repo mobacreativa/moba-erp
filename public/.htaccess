@@ -1,6 +1,8 @@
 Options -Indexes
 Require all granted
 DirectoryIndex index.php
+AddType text/javascript .mjs
+AddType application/wasm .wasm
 
 RewriteEngine On
 # Dominio previsto para esta instalación. El servidor PHP local ignora este archivo.
