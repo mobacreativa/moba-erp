@@ -32,7 +32,7 @@ function moba_sidebar(array $actor, string $current, bool $spa = false): string
         }
     }
     $who = trim((string) ($actor['name'] ?? $actor['username'] ?? ''));
-    return '<aside><a class="brand" href="' . ($office ? '/?view=erp' : '/?view=team') . '">MOBA<small>CREATIVA · ERP</small></a>'
+    return '<aside><a class="brand" href="' . ($office ? '/?view=erp' : '/?view=team') . '"><img src="/logo-moba.png?v=20261126" alt="MOBA Creativa" width="120" height="118"><small>ERP</small></a>'
         . '<nav aria-label="Secciones">' . $nav . '</nav>'
         . '<form class="logout" method="post" action="/">'
         . ($who !== '' ? '<p class="who">' . e($who) . '</p>' : '')
