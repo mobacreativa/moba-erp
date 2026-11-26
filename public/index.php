@@ -3,6 +3,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/app/Customers.php';
 require dirname(__DIR__) . '/app/Auth.php';
 require dirname(__DIR__) . '/app/Users.php';
+require dirname(__DIR__) . '/app/layout.php';
 use Moba\Customers;
 use Moba\Auth;
 
@@ -122,24 +123,22 @@ if (!empty($_SESSION['authenticated']) && (field($_GET,'view') === 'erp' || (fie
 }
 ?>
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clientes · MOBA ERP</title><link rel="stylesheet" href="/app.css"></head>
-<body><header><a class="brand" href="/">MOBA <span>ERP</span></a><span>Gestión del taller</span>
-<?php if (!empty($_SESSION['authenticated'])): ?><form method="post"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><input type="hidden" name="action" value="logout"><button class="secondary">Cerrar sesión</button></form><?php endif ?>
-</header><main>
-<?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif ?>
-<?php if ($success): ?><p class="success" role="status"><?= e($success) ?></p><?php endif ?>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= empty($_SESSION['authenticated']) ? 'Acceso' : 'Clientes' ?> · MOBA ERP</title><link rel="stylesheet" href="/erp.css?v=20261126"></head>
 <?php if (empty($_SESSION['authenticated'])): ?>
-<section class="login"><p class="eyebrow">MOBA CREATIVA</p><h1>Tu taller, organizado.</h1><p>Acceso privado a la gestión de clientes.</p><form method="post"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><label>Usuario<input name="username" required autocomplete="username" maxlength="80"></label><label>Contraseña<input type="password" name="password" required autocomplete="current-password"></label><button>Entrar</button></form></section>
-<?php else: ?>
-<p><a href="/?view=accounting">← Volver a Contabilidad</a></p><p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1><p>Los contactos que dan vida a tus proyectos.</p>
-<div class="layout"><section><form class="search" method="get"><input type="hidden" name="view" value="customers"><label>Buscar por nombre o NIF<input name="q" value="<?= e($query) ?>" maxlength="160" placeholder="Nombre o NIF"></label><button>Buscar</button></form>
-<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Contacto</th><th></th></tr></thead><tbody>
-<?php foreach ($rows as $row): ?><tr><td><strong><?= e($row['name']) ?></strong><small><?= e($row['tax_id']) ?></small></td><td><?= e($row['email']) ?><small><?= e($row['phone']) ?></small></td><td><a href="/?edit=<?= e($row['id']) ?>">Editar<span class="sr-only"> <?= e($row['name']) ?></span></a></td></tr><?php endforeach ?>
-<?php if (!$rows): ?><tr><td colspan="3">No hay clientes<?= $query !== '' ? ' que coincidan con la búsqueda' : ' todavía' ?>.</td></tr><?php endif ?>
-</tbody></table></div><small>Se muestran hasta 100 resultados. Usa la búsqueda para acotar.</small></section>
-<section class="card"><h2><?= !empty($editing['id']) ? 'Editar cliente' : 'Nuevo cliente' ?></h2><form method="post"><input type="hidden" name="action" value="save_customer"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><input type="hidden" name="id" value="<?= e(is_scalar($editing['id'] ?? '') ? ($editing['id'] ?? '') : '') ?>">
+<body class="login-page"><main><section class="login card"><p class="muted">Acceso privado.</p>
+<?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif ?>
+<form method="post"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><label>Usuario<input name="username" required autocomplete="username" maxlength="80"></label><label>Contraseña<input type="password" name="password" required autocomplete="current-password"></label><button class="primary">Entrar</button></form></section></main></body></html>
+<?php exit; endif ?>
+<body><?= moba_sidebar($actor ?? [], 'customers') ?><main><header><p class="eyebrow">AGENDA COMERCIAL</p><h1>Clientes</h1>
+<?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif ?>
+<?php if ($success): ?><p class="success" role="status"><?= e($success) ?></p><?php endif ?></header>
+<div class="split customers"><section><form class="toolbar" method="get"><input type="hidden" name="view" value="customers"><label class="grow">Buscar por nombre o NIF<input name="q" type="search" value="<?= e($query) ?>" maxlength="160" placeholder="Nombre o NIF"></label><button>Buscar</button></form>
+<div class="card scroll"><table><thead><tr><th>Cliente</th><th>Contacto</th><th class="actions"></th></tr></thead><tbody>
+<?php foreach ($rows as $row): ?><tr><td><strong><?= e($row['name']) ?></strong><small><?= e($row['tax_id']) ?></small></td><td><?= e($row['email']) ?><small><?= e($row['phone']) ?></small></td><td class="actions"><a class="button" href="/?edit=<?= e($row['id']) ?>">Editar<span class="sr-only"> <?= e($row['name']) ?></span></a></td></tr><?php endforeach ?>
+<?php if (!$rows): ?><tr><td colspan="3" class="empty">No hay clientes<?= $query !== '' ? ' que coincidan con la búsqueda' : ' todavía' ?>.</td></tr><?php endif ?>
+</tbody></table></div><p class="muted">Se muestran hasta 100 resultados. Usa la búsqueda para acotar.</p></section>
+<section class="card form-card"><h2><?= !empty($editing['id']) ? 'Editar cliente' : 'Nuevo cliente' ?></h2><form method="post"><input type="hidden" name="action" value="save_customer"><input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>"><input type="hidden" name="id" value="<?= e(is_scalar($editing['id'] ?? '') ? ($editing['id'] ?? '') : '') ?>">
 <?php foreach (['name' => 'Nombre o razón social', 'tax_id' => 'NIF / CIF', 'email' => 'Correo electrónico', 'phone' => 'Teléfono', 'address' => 'Dirección'] as $key => $label): ?>
 <label><?= e($label) ?><input name="<?= e($key) ?>" type="<?= $key === 'email' ? 'email' : 'text' ?>" value="<?= e($editing[$key] ?? '') ?>" <?= $key === 'name' ? 'required' : '' ?>></label>
-<?php endforeach ?><button>Guardar cliente</button> <a href="/?view=customers">Limpiar formulario</a></form></section></div>
-<?php endif ?></main><footer>MOBA ERP · Primera versión · Clientes</footer></body></html>
-
+<?php endforeach ?><div class="form-actions"><a class="button" href="/?view=customers">Limpiar formulario</a><button class="primary">Guardar cliente</button></div></form></section></div>
+</main></body></html>
