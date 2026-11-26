@@ -24,6 +24,19 @@ $updated=$w->progress(['id'=>$order['id'],'version'=>1,'status'=>'in_progress','
 check($updated['items']===[['product'=>'Shirts','quantity'=>30],['product'=>'Mugs','quantity'=>12]],'Products preserved on progress');
 check($updated['status']==='in_progress' && count($r->history('work_order',$order['id']))===2,'Progress history');
 try{$w->progress(['id'=>$order['id'],'version'=>1,'status'=>'completed'],$worker);throw new LogicException('Lost update');}catch(RuntimeException $e){check($e->getCode()===409,'Version conflict');}
+// Papelera: solo oficina elimina; la orden desaparece para todos, se puede restaurar y conserva historial.
+denied(fn()=>$w->trash(['id'=>$order['id'],'version'=>$updated['version']],$worker));
+$gone=$w->trash(['id'=>$order['id'],'version'=>$updated['version']],$root);
+check($gone['deleted']===true && count($w->all($root))===0 && count($w->all($root,true))===1,'Trash hides order');
+check(count($w->all($worker))===0 && $w->all($worker,true)===[],'Worker loses deleted order');
+denied(fn()=>$w->get($order['id'],$worker));
+denied(fn()=>$w->progress(['id'=>$order['id'],'version'=>$gone['version'],'status'=>'completed'],$root));
+denied(fn()=>$w->save(['id'=>$order['id'],'version'=>$gone['version'],'name'=>'Edit deleted','assignee_id'=>$worker['id']],$root));
+denied(fn()=>$w->trash(['id'=>$order['id'],'version'=>$gone['version']],$root));
+denied(fn()=>$w->trash(['id'=>$order['id'],'version'=>$gone['version']],$worker,true));
+$back=$w->trash(['id'=>$order['id'],'version'=>$gone['version']],$root,true);
+check($back['deleted']===false && count($w->all($worker))===1 && $back['items']===$updated['items'] && $back['status']==='in_progress','Restore keeps content');
+check(count($r->history('work_order',$order['id']))===4,'Trash and restore keep history');
 foreach([0,-1,1.5,'abc'] as $bad)denied(fn()=>$w->save(['name'=>'Bad','assignee_id'=>$worker['id'],'items'=>[['product'=>'Test','quantity'=>$bad]]],$root));
 denied(fn()=>$w->save(['name'=>'Bad','assignee_id'=>$worker['id'],'items'=>[['product'=>'','quantity'=>1]]],$root));
 $session=['authenticated'=>true,'user_id'=>$worker['id'],'user_version'=>$identity['session_version']];
@@ -33,4 +46,4 @@ check($u->current($session)===null,'Password update revokes session');
 check($u->login('worker-test','unique-test-password')===null,'Old password invalid');
 $changed['active']=false;$u->save($changed,$root);
 check($u->login('worker-test','replacement-password')===null,'Disabled login');
-echo "Users and work orders: roles, assignment, history, revocation OK\n";
+echo "Users and work orders: roles, assignment, history, trash/restore, revocation OK\n";

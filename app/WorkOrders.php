@@ -5,18 +5,29 @@ use InvalidArgumentException;
 final class WorkOrders
 {
     public function __construct(private Records $records,private Users $users,private ?\PDO $db=null) {}
-    public function all(array $actor): array {
-        return array_values(array_filter($this->records->all('work_order'),fn($o)=>$actor['role']!=='production' || (int)$o['assignee_id']===(int)$actor['id']));
+    public function all(array $actor,bool $deleted=false): array {
+        if ($deleted && $actor['role']==='production') { return []; }
+        return array_values(array_filter($this->records->all('work_order'),fn($o)=>(bool)($o['deleted']??false)===$deleted && ($actor['role']!=='production' || (int)$o['assignee_id']===(int)$actor['id'])));
     }
     public function get(string $id,array $actor): array {
         $o=$this->records->get('work_order',$id);
-        if ($actor['role']==='production' && (int)$o['assignee_id']!==(int)$actor['id']) { http_response_code(403);throw new InvalidArgumentException('No tienes acceso a esta orden.'); }
+        if ($actor['role']==='production' && ((int)$o['assignee_id']!==(int)$actor['id'] || ($o['deleted']??false))) { http_response_code(403);throw new InvalidArgumentException('No tienes acceso a esta orden.'); }
         return $o;
+    }
+    /** Envía la orden a la papelera o la restaura. Conserva el documento y su historial. */
+    public function trash(array $input,array $actor,bool $restore=false): array {
+        Users::allow($actor,['admin','sales']);
+        if (!is_string($input['id'] ?? null) || $input['id']==='') { throw new InvalidArgumentException('Orden no válida.'); }
+        $o=$this->get($input['id'],$actor);
+        if ((bool)($o['deleted']??false)===!$restore) { throw new InvalidArgumentException($restore?'La orden no está en la papelera.':'La orden ya está en la papelera.'); }
+        $o['deleted']=!$restore;$o['deleted_at']=$restore?'':gmdate('c');$o['actor']=$actor['username'];
+        return $this->records->save('work_order',$o,$o['id'],(int)($input['version'] ?? 0));
     }
     public function save(array $input,array $actor): array {
         Users::allow($actor,['admin','sales']);
         $id=is_string($input['id'] ?? null)?$input['id']:'';
         $old=$id!==''?$this->get($id,$actor):null;
+        if ($old['deleted']??false) { throw new InvalidArgumentException('Restaura la orden desde la papelera antes de editarla.'); }
         foreach (['name','instructions','due_date','quote_id'] as $key) { if (!is_string($input[$key] ?? '')) { throw new InvalidArgumentException('Orden no válida.'); } }
         $name=trim($input['name'] ?? '');$instructions=trim($input['instructions'] ?? '');$date=$input['due_date'] ?? '';
         if ($name==='' || mb_strlen($name)>190 || mb_strlen($instructions)>20000) { throw new InvalidArgumentException('Indica un título y unas instrucciones válidas.'); }
@@ -51,6 +62,7 @@ final class WorkOrders
     public function progress(array $input,array $actor): array {
         Users::allow($actor,['admin','production']);
         $o=$this->get((string)($input['id'] ?? ''),$actor);
+        if ($o['deleted']??false) { throw new InvalidArgumentException('Restaura la orden desde la papelera antes de actualizarla.'); }
         $status=$input['status'] ?? '';$progress=$input['progress'] ?? '';
         if (!is_string($progress) || mb_strlen($progress)>20000 || !in_array($status,['pending','in_progress','blocked','completed'],true)) { throw new InvalidArgumentException('Estado o nota no válida.'); }
         $o['status']=$status;$o['progress']=$progress;$o['actor']=$actor['username'];

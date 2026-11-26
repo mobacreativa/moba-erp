@@ -53,6 +53,8 @@ try {
 
                 $result['quotes']=array_map(fn($q)=>['id'=>$q['id'],'name'=>$q['name']],$records->all('quote'));
 
+                $result['trash']=$orders->all($actor,true);
+
             }
 
         } elseif ($action === 'team_history') {
@@ -104,6 +106,10 @@ try {
             'team_user' => $users->save($input,$actor),
 
             'team_order' => $orders->save($input,$actor),
+
+            'team_order_trash' => $orders->trash($input,$actor),
+
+            'team_order_restore' => $orders->trash($input,$actor,true),
 
             'team_progress' => $orders->progress($input,$actor),
 

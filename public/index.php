@@ -123,7 +123,7 @@ if (!empty($_SESSION['authenticated']) && (field($_GET,'view') === 'erp' || (fie
 }
 ?>
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= empty($_SESSION['authenticated']) ? 'Acceso' : 'Clientes' ?> · MOBA ERP</title><link rel="stylesheet" href="/erp.css?v=20261126"></head>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= empty($_SESSION['authenticated']) ? 'Acceso' : 'Clientes' ?> · MOBA ERP</title><link rel="stylesheet" href="/erp.css?v=20261127"></head>
 <?php if (empty($_SESSION['authenticated'])): ?>
 <body class="login-page"><main><section class="login card"><p class="muted">Acceso privado.</p>
 <?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif ?>

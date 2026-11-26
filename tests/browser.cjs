@@ -133,6 +133,14 @@ const assert=require('node:assert/strict');
  await page.locator('#editor').waitFor({state:'hidden'});
  await page.getByRole('heading',{name:'Browser work order',exact:true}).waitFor();
  await page.screenshot({path:'/tmp/moba-work-order.png',fullPage:true});
+ page.once('dialog',d=>{assert.match(d.message(),/Browser work order/);d.accept();});
+ await page.getByRole('button',{name:'Eliminar orden',exact:true}).click();
+ await page.getByText('Papelera (1)',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('row',{name:/Browser work order/}).count(),0); // fuera del flujo; la papelera está plegada
+ await page.getByText('Papelera (1)',{exact:true}).click();
+ await page.getByRole('button',{name:'Restaurar',exact:true}).click();
+ await page.getByText('Papelera (0)',{exact:true}).waitFor();
+ await page.getByRole('row',{name:/Browser work order/}).waitFor();
  await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
  await page.getByLabel('Usuario',{exact:true}).fill('browser-operator');
  await page.getByLabel('Contraseña',{exact:true}).fill('browser-test-password');
