@@ -170,4 +170,4 @@ $('editform').addEventListener('submit',async event=>{event.preventDefault();con
   else await saveRecord(event);
 }catch(e){$('formerror').hidden=false;$('formerror').textContent=e.message}finally{submit.disabled=false;submit.textContent='Guardar'}});
 document.addEventListener('input',event=>{if(event.target.id==='filter'){filter=event.target.value;const position=event.target.selectionStart;if(view==='quotes')quotes();else catalog();$('filter').focus();$('filter').setSelectionRange(position,position);}});
-load().then(()=>show(['configuration','supplier'].includes(new URLSearchParams(location.search).get('section'))?new URLSearchParams(location.search).get('section'):'home')).catch(e=>notice(e.message,true));
+load().then(()=>show(['configuration','supplier','quotes'].includes(new URLSearchParams(location.search).get('section'))?new URLSearchParams(location.search).get('section'):'home')).catch(e=>notice(e.message,true));
