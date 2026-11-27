@@ -90,7 +90,9 @@ dialog footer button[type=submit],dialog footer button:not([type=button]){backgr
 .primary:hover,
 [data-action=add]:hover,[data-action=new]:hover,[data-action=savequote]:hover,[data-action=order]:hover,[data-action=user]:hover,
 dialog footer button[type=submit]:hover,dialog footer button:not([type=button]):hover{background:var(--primary-hover);border-color:var(--primary-hover)}
-.danger,[data-delete],[data-invoice-trash],[data-action=delete],[data-action=rejected]{color:var(--danger)}
+.danger,[data-delete],[data-invoice-trash],[data-action=delete],[data-action=rejected],[data-action=trash_order]{color:var(--danger)}
+[data-action=trash_order]{margin-left:auto;border-color:#e2b8b1}
+[data-action=trash_order]:hover{background:var(--danger-bg)}
 .secondary{background:var(--surface-2)}
 
 /* Barras de herramientas: botones y campos alineados por abajo */
@@ -131,6 +133,8 @@ details[open]>summary{margin-bottom:10px}
 .scroll{overflow:auto}
 .card.scroll,.card:has(>.scroll){padding:0}
 .card:has(>.scroll)>h2,.card.scroll>h2{padding:18px 20px 0}
+details.card:has(>.scroll)>summary,details.card:has(>.scroll)>p{padding-left:20px;padding-right:20px}
+details.card:has(>.scroll)>summary{padding-top:14px;padding-bottom:10px;margin:0}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
 th{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);white-space:nowrap}
