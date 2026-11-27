@@ -6,4 +6,10 @@ return [
     'admin_username' => '',
     'admin_password_hash' => '',
     'secure_cookie' => true,
+    // Pedidos de Shopify (opcional). Ver DEPLOY.md > Pedidos de Shopify.
+    // 'shopify' => [
+    //     'webhook_secret' => '',          // Clave de firma que muestra Shopify en Notificaciones > Webhooks
+    //     'assignee_username' => '',       // Usuario (Producción o Administrador) que recibe las órdenes
+    //     'shop_domain' => '',             // Opcional: tu-tienda.myshopify.com
+    // ],
 ];

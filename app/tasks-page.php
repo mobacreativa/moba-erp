@@ -1,3 +1,3 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tareas generales · MOBA ERP</title><link rel="stylesheet" href="/erp.css?v=20261127"><script src="/tasks.js?v=20261115" defer></script></head>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tareas generales · MOBA ERP</title><link rel="stylesheet" href="/erp.css?v=20261127b"><script src="/tasks.js?v=20261115" defer></script></head>
 <body><?= moba_sidebar($actor,'tasks') ?><main><header><p class="eyebrow">EQUIPO MOBA</p><h1>Tareas generales</h1><p id="notice" role="status">Cargando…</p></header><section id="content"></section></main><dialog id="editor"><form id="taskform"><div id="fields"></div><footer><button type="button" id="cancel">Cancelar</button><button type="submit">Guardar tarea</button></footer></form></dialog></body></html>

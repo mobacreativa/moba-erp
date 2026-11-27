@@ -150,6 +150,7 @@ td>button+button,td>a.button+button,td>button+a.button{margin-left:6px}
 td.empty,td[colspan]{color:var(--muted);text-align:center;padding:28px}
 .money,td.money{font-variant-numeric:tabular-nums;white-space:nowrap}
 .tag{display:inline-block;border-radius:999px;background:#ece5d8;color:var(--ink-2);padding:3px 9px;font-size:12px;font-weight:600}
+.tag-web{background:#e3ecf3;color:#24506e}
 
 /* Diálogos */
 dialog{border:1px solid var(--line);border-radius:14px;width:min(940px,95vw);max-height:92vh;padding:24px 24px 0;background:var(--surface);color:var(--ink);box-shadow:0 20px 50px rgba(0,0,0,.25)}
