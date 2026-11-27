@@ -36,3 +36,23 @@ Solo para una instalación nueva en otra cuenta.
 7. Generar el hash de administrador con `php bin/password.php` desde Terminal de cPanel. Introducir la contraseña allí, no en GitHub ni en el chat.
 8. Verificar HTTPS, login incorrecto/correcto, cierre de sesión, alta y edición de un cliente de prueba, y que `/config/local.php`, `/database/schema.sql` y `/.git/config` no son accesibles.
 9. Configurar y comprobar restauración de copias de seguridad antes de introducir datos reales.
+
+## Pedidos de Shopify
+
+Cada pedido nuevo de la tienda (evento «Creación de pedido») crea una orden de trabajo con Fuente «Web (Shopify)»: productos con variante y SKU, cantidades, personalizaciones, nota del cliente y dirección de envío, sin precios. El cliente se vincula por email o se crea en Clientes. Un mismo pedido nunca crea dos órdenes. Los cambios o cancelaciones posteriores en Shopify no se sincronizan: se gestionan en la orden.
+
+1. En el ERP, Configuración general > Usuarios: elegir o crear el usuario que recibirá los pedidos (rol Producción o Administrador, activo). El administrador principal de `config/local.php` no puede ser responsable de órdenes.
+2. En Shopify, Configuración > Notificaciones > Webhooks > Crear webhook: evento «Creación de pedido», formato JSON, URL `https://erp.mobacreativa.com/?webhook=shopify` y la versión de API más reciente. Copiar la clave con la que Shopify firma los webhooks (aparece en esa misma página).
+3. En cPanel > Administrador de archivos, editar `moba-erp/config/local.php` y añadir antes del `];` final, sin compartir la clave en GitHub ni en el chat:
+
+   ```php
+   'shopify' => [
+       'webhook_secret' => 'CLAVE_DE_FIRMA_DE_SHOPIFY',
+       'assignee_username' => 'usuario_del_paso_1',
+       'shop_domain' => '',
+   ],
+   ```
+
+4. En Shopify, pulsar «Enviar notificación de prueba» junto al webhook. Debe aparecer en Flujo de trabajo una orden «Shopify #…» de prueba; después eliminarla con «Eliminar orden».
+
+Si la clave no coincide, el ERP rechaza el aviso (401). Si falta la configuración o el usuario no es válido, responde con error y Shopify reintenta el envío durante unas horas; el motivo queda en el log de errores de PHP.

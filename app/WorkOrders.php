@@ -23,7 +23,8 @@ final class WorkOrders
         $o['deleted']=!$restore;$o['deleted_at']=$restore?'':gmdate('c');$o['actor']=$actor['username'];
         return $this->records->save('work_order',$o,$o['id'],(int)($input['version'] ?? 0));
     }
-    public function save(array $input,array $actor): array {
+    /** $extra: datos internos de origen (p. ej. pedido de Shopify); solo los fija el servidor y se conservan al editar. */
+    public function save(array $input,array $actor,array $extra=[]): array {
         Users::allow($actor,['admin','sales']);
         $id=is_string($input['id'] ?? null)?$input['id']:'';
         $old=$id!==''?$this->get($id,$actor):null;
@@ -57,6 +58,10 @@ final class WorkOrders
             $clean[]=['product'=>trim($item['product']),'quantity'=>$quantity];
         }
         $doc=['items'=>$clean,'customer_id'=>$customerId,'customer_name'=>$customerName,'payment_method'=>$payment,'name'=>$name,'instructions'=>$instructions,'due_date'=>$date,'assignee_id'=>$assignee,'assignee_name'=>$user['name'],'quote_id'=>$quoteId,'quote_name'=>$quoteName,'status'=>$old['status'] ?? 'pending','progress'=>$old['progress'] ?? '', 'actor'=>$actor['username']];
+        foreach (['source','shopify_order_id','shopify_order_name'] as $key) {
+            if (array_key_exists($key,$extra)) { $doc[$key]=(string)$extra[$key]; }
+            elseif (isset($old[$key])) { $doc[$key]=$old[$key]; }
+        }
         return $this->records->save('work_order',$doc,$id,(int)($input['version'] ?? 0));
     }
     public function progress(array $input,array $actor): array {
