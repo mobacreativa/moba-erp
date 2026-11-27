@@ -176,6 +176,8 @@ body.login-page main{padding:0;max-width:400px}
 .login.card{padding:28px;margin:0}
 .login .button,.login button{width:100%;margin-top:4px}
 
+.due-field{max-width:260px;margin:4px 0 16px}
+.due-field input{margin-top:6px}
 @media(max-width:1100px){.split,.split.customers{grid-template-columns:1fr}.form-card{position:static}}
 @media(max-width:900px){
   body{display:block}

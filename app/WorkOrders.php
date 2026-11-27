@@ -64,6 +64,16 @@ final class WorkOrders
         }
         return $this->records->save('work_order',$doc,$id,(int)($input['version'] ?? 0));
     }
+    /** Cambia solo la fecha de entrega estimada (vacía = sin fecha). */
+    public function due(array $input,array $actor): array {
+        Users::allow($actor,['admin','sales']);
+        $o=$this->get((string)($input['id'] ?? ''),$actor);
+        if ($o['deleted']??false) { throw new InvalidArgumentException('Restaura la orden desde la papelera antes de editarla.'); }
+        $date=$input['due_date'] ?? '';
+        if (!is_string($date) || ($date!=='' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date) || !checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))))) { throw new InvalidArgumentException('Fecha no válida.'); }
+        $o['due_date']=$date;$o['actor']=$actor['username'];
+        return $this->records->save('work_order',$o,$o['id'],(int)($input['version'] ?? 0));
+    }
     public function progress(array $input,array $actor): array {
         Users::allow($actor,['admin','production']);
         $o=$this->get((string)($input['id'] ?? ''),$actor);

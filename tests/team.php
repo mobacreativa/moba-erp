@@ -24,6 +24,16 @@ $updated=$w->progress(['id'=>$order['id'],'version'=>1,'status'=>'in_progress','
 check($updated['items']===[['product'=>'Shirts','quantity'=>30],['product'=>'Mugs','quantity'=>12]],'Products preserved on progress');
 check($updated['status']==='in_progress' && count($r->history('work_order',$order['id']))===2,'Progress history');
 try{$w->progress(['id'=>$order['id'],'version'=>1,'status'=>'completed'],$worker);throw new LogicException('Lost update');}catch(RuntimeException $e){check($e->getCode()===409,'Version conflict');}
+// Fecha de creación (versión 1 del historial) y fecha de entrega estimada editable solo por oficina.
+check(preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/',(string)($w->get($order['id'],$root)['created_at']??''))===1,'Creation date exposed');
+$created=$w->get($order['id'],$root)['created_at'];
+denied(fn()=>$w->due(['id'=>$order['id'],'version'=>$updated['version'],'due_date'=>'2026-12-15'],$worker));
+denied(fn()=>$w->due(['id'=>$order['id'],'version'=>$updated['version'],'due_date'=>'2026-02-30'],$root));
+$dated=$w->due(['id'=>$order['id'],'version'=>$updated['version'],'due_date'=>'2026-12-15'],$root);
+check($dated['due_date']==='2026-12-15' && $dated['items']===$updated['items'] && $dated['status']==='in_progress','Due date saved without touching the rest');
+check($w->get($order['id'],$root)['created_at']===$created,'Creation date unchanged by edits');
+$updated=$w->due(['id'=>$order['id'],'version'=>$dated['version'],'due_date'=>''],$root);
+check($updated['due_date']==='','Due date cleared');
 // Papelera: solo oficina elimina; la orden desaparece para todos, se puede restaurar y conserva historial.
 denied(fn()=>$w->trash(['id'=>$order['id'],'version'=>$updated['version']],$worker));
 $gone=$w->trash(['id'=>$order['id'],'version'=>$updated['version']],$root);
@@ -36,7 +46,7 @@ denied(fn()=>$w->trash(['id'=>$order['id'],'version'=>$gone['version']],$root));
 denied(fn()=>$w->trash(['id'=>$order['id'],'version'=>$gone['version']],$worker,true));
 $back=$w->trash(['id'=>$order['id'],'version'=>$gone['version']],$root,true);
 check($back['deleted']===false && count($w->all($worker))===1 && $back['items']===$updated['items'] && $back['status']==='in_progress','Restore keeps content');
-check(count($r->history('work_order',$order['id']))===4,'Trash and restore keep history');
+check(count($r->history('work_order',$order['id']))===6,'Trash and restore keep history');
 foreach([0,-1,1.5,'abc'] as $bad)denied(fn()=>$w->save(['name'=>'Bad','assignee_id'=>$worker['id'],'items'=>[['product'=>'Test','quantity'=>$bad]]],$root));
 denied(fn()=>$w->save(['name'=>'Bad','assignee_id'=>$worker['id'],'items'=>[['product'=>'','quantity'=>1]]],$root));
 $session=['authenticated'=>true,'user_id'=>$worker['id'],'user_version'=>$identity['session_version']];
