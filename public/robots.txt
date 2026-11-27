@@ -1,0 +1,3 @@
+# erp.mobacreativa.com es una aplicación privada: no rastrear ni indexar.
+User-agent: *
+Disallow: /
