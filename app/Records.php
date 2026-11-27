@@ -15,7 +15,7 @@ final class Records
     public function all(string $kind): array
     {
         $this->kind($kind);
-        $q = $this->db->prepare('SELECT id,version,document,updated_at FROM erp_records WHERE kind=? ORDER BY updated_at DESC,id');
+        $q = $this->db->prepare('SELECT r.id,r.version,r.document,r.updated_at,h.created_at FROM erp_records r LEFT JOIN erp_history h ON h.kind=r.kind AND h.id=r.id AND h.version=1 WHERE r.kind=? ORDER BY r.updated_at DESC,r.id');
         $q->execute([$kind]);
         return array_map($this->decode(...), $q->fetchAll(PDO::FETCH_ASSOC));
     }
@@ -23,7 +23,7 @@ final class Records
     public function get(string $kind, string $id): array
     {
         $this->kind($kind);
-        $q = $this->db->prepare('SELECT id,version,document,updated_at FROM erp_records WHERE kind=? AND id=?');
+        $q = $this->db->prepare('SELECT r.id,r.version,r.document,r.updated_at,h.created_at FROM erp_records r LEFT JOIN erp_history h ON h.kind=r.kind AND h.id=r.id AND h.version=1 WHERE r.kind=? AND r.id=?');
         $q->execute([$kind,$id]);
         $row = $q->fetch(PDO::FETCH_ASSOC);
         if (!$row) { throw new InvalidArgumentException('El registro no existe.'); }
@@ -41,7 +41,7 @@ final class Records
     public function save(string $kind, array $data, string $id = '', int $version = 0): array
     {
         $this->kind($kind);
-        unset($data['id'], $data['version'], $data['updated_at']);
+        unset($data['id'], $data['version'], $data['updated_at'], $data['created_at']);
         $data = $this->validate($kind, $data);
         $json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         if (strlen($json) > 2000000) { throw new InvalidArgumentException('Registro demasiado grande.'); }
@@ -70,7 +70,9 @@ final class Records
 
     private function decode(array $row): array
     {
-        return array_merge(json_decode($row['document'], true, 64, JSON_THROW_ON_ERROR), ['id'=>$row['id'],'version'=>(int)$row['version'],'updated_at'=>$row['updated_at']]);
+        $meta = ['id'=>$row['id'],'version'=>(int)$row['version'],'updated_at'=>$row['updated_at']];
+        if (array_key_exists('created_at', $row)) { $meta['created_at'] = $row['created_at']; }
+        return array_merge(json_decode($row['document'], true, 64, JSON_THROW_ON_ERROR), $meta);
     }
 
     private function kind(string $kind): void

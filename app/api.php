@@ -109,6 +109,8 @@ try {
 
             'team_order_trash' => $orders->trash($input,$actor),
 
+            'team_order_due' => $orders->due($input,$actor),
+
             'team_order_restore' => $orders->trash($input,$actor,true),
 
             'team_progress' => $orders->progress($input,$actor),
