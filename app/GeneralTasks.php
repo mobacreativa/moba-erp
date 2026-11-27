@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace Moba;
 use InvalidArgumentException;
 final class Tasks {
-    public function __construct(private Records $records,private Users $users,private string $directory) {}
+    public function __construct(private Records $records,private Users $users,private string $directory,private ?Notifier $notifier=null) {}
     public function all(array $a): array { return array_values(array_filter($this->records->all('task'),fn($t)=>$a['role']==='admin'||(int)$t['assignee_id']===(int)$a['id']||(int)$t['creator_id']===(int)$a['id'])); }
     public function get(string $id,array $a): array {
         $t=$this->records->get('task',$id);
@@ -22,7 +22,9 @@ final class Tasks {
             if (!$u['active']) throw new InvalidArgumentException('El responsable no está activo.');
             $doc=['name'=>trim($name),'description'=>trim($description),'assignee_id'=>$assignee,'assignee_name'=>$u['name'],'creator_id'=>$old['creator_id']??(int)$a['id'],'status'=>$state,'attachments'=>$old['attachments']??[]];
         }
-        return $this->records->save('task',$doc,$id,(int)($p['version']??0));
+        $saved=$this->records->save('task',$doc,$id,(int)($p['version']??0));
+        if ($this->notifier && Notifier::shouldNotify($old,$saved,$a)) { $this->notifier->task($saved,$a); }
+        return $saved;
     }
     public function attach(array $p,array $f,array $a): array {
         $t=$this->get((string)($p['id']??''),$a);

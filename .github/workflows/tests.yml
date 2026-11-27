@@ -50,6 +50,9 @@ jobs:
           php tests/erp_integration.php
           php tests/accounting.php
           php tests/shopify.php
+          php tests/notify.php without-email-column
+          php -r '$db = new PDO(getenv("MOBA_TEST_DSN"), getenv("MOBA_TEST_USER"), getenv("MOBA_TEST_PASSWORD")); $db->exec(file_get_contents("database/004_user_email.sql")); $db->exec(file_get_contents("database/004_user_email.sql"));'
+          php tests/notify.php
           php tests/configure.php
       - name: HTTP authentication and customer flow
         run: |

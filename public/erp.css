@@ -146,6 +146,8 @@ td strong{font-weight:600}
 td small{display:block;color:var(--muted);margin-top:3px}
 td:has(>button),td:has(>a.button),td.actions{text-align:right;white-space:nowrap;width:1%}
 td>button,td>a.button{height:32px;padding:0 12px;font-size:13px}
+td>button[data-action]{background:var(--surface);border-color:var(--line-strong);color:var(--ink)}
+td>button[data-action]:hover{background:var(--hover)}
 td>button+button,td>a.button+button,td>button+a.button{margin-left:6px}
 td.empty,td[colspan]{color:var(--muted);text-align:center;padding:28px}
 .money,td.money{font-variant-numeric:tabular-nums;white-space:nowrap}

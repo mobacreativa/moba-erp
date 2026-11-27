@@ -1,3 +1,3 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flujo de trabajo · MOBA ERP</title><link rel="stylesheet" href="/erp.css?v=20261128"><script src="/team.js?v=20261128b" defer></script></head>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flujo de trabajo · MOBA ERP</title><link rel="stylesheet" href="/erp.css?v=20261129"><script src="/team.js?v=20261129" defer></script></head>
 <body><?= moba_sidebar($actor,'team') ?><main><header><p class="eyebrow">EQUIPO MOBA</p><h1 id="title">Órdenes de trabajo</h1><p id="notice" role="status" aria-live="polite">Cargando…</p></header><section id="content"></section></main><dialog id="editor"><form id="editform"><div id="fields"></div><footer><button type="button" id="cancel">Cancelar</button><button type="submit">Guardar</button></footer></form></dialog></body></html>

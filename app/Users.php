@@ -7,15 +7,21 @@ use RuntimeException;
 
 final class Users
 {
+    private ?bool $emailColumn = null;
     public function __construct(private PDO $db, private array $config) {}
-    public function root(): array { return ['id'=>0,'username'=>$this->config['admin_username'],'name'=>'Administrador principal','role'=>'admin','active'=>true,'session_version'=>1]; }
+    public function root(): array { $email=(string)($this->config['admin_email'] ?? '');return ['id'=>0,'username'=>$this->config['admin_username'],'name'=>'Administrador principal','email'=>filter_var($email,FILTER_VALIDATE_EMAIL)?$email:'','role'=>'admin','active'=>true,'session_version'=>1]; }
+    /** La columna email llega con database/004_user_email.sql; hasta entonces el ERP funciona sin correos. */
+    public function hasEmail(): bool {
+        return $this->emailColumn ??= (bool)$this->db->query("SHOW COLUMNS FROM erp_users LIKE 'email'")->fetch();
+    }
     public function all(): array {
-        return $this->db->query('SELECT id,username,name,role,active,version FROM erp_users ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
+        return $this->db->query('SELECT id,username,name,'.($this->hasEmail()?'email':"'' AS email").',role,active,version FROM erp_users ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
     }
     public function get(int $id): array {
         $q=$this->db->prepare('SELECT * FROM erp_users WHERE id=?');$q->execute([$id]);
         $row=$q->fetch(PDO::FETCH_ASSOC);
         if (!$row) { throw new InvalidArgumentException('El usuario no existe.'); }
+        $row['email']??='';
         return $row;
     }
     public function login(string $username,string $password): ?array {
@@ -42,10 +48,13 @@ final class Users
         self::allow($actor,['admin']);
         $id=filter_var($input['id'] ?? 0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
         if ($id===false) { throw new InvalidArgumentException('Usuario no válido.'); }
-        foreach (['username','name','role','password'] as $key) { if (!is_string($input[$key] ?? '')) { throw new InvalidArgumentException('Datos de usuario no válidos.'); } }
+        foreach (['username','name','role','password','email'] as $key) { if (!is_string($input[$key] ?? '')) { throw new InvalidArgumentException('Datos de usuario no válidos.'); } }
         $username=trim($input['username'] ?? '');$name=trim($input['name'] ?? '');$role=$input['role'] ?? '';$password=$input['password'] ?? '';
         if (!preg_match('/^[a-zA-Z0-9_.@-]{3,80}$/D',$username) || strcasecmp($username,$this->config['admin_username'])===0) { throw new InvalidArgumentException('Elige otro usuario (3–80 letras, números, punto, guion, @ o _).'); }
         if ($name==='' || mb_strlen($name)>190 || !in_array($role,['admin','sales','production'],true)) { throw new InvalidArgumentException('Nombre o rol no válido.'); }
+        $email=trim($input['email'] ?? '');
+        if ($email!=='' && (strlen($email)>190 || !filter_var($email,FILTER_VALIDATE_EMAIL))) { throw new InvalidArgumentException('El correo electrónico no es válido.'); }
+        if ($email!=='' && !$this->hasEmail()) { throw new InvalidArgumentException('Para guardar correos, importa antes database/004_user_email.sql en phpMyAdmin.'); }
         $active=!empty($input['active']);
         if ($id>0 && $id===(int)$actor['id'] && (!$active || $role!=='admin')) { throw new InvalidArgumentException('No puedes quitarte tu acceso de administrador.'); }
         if (($id===0 || $password!=='') && (strlen($password)<12 || strlen($password)>72)) { throw new InvalidArgumentException('La contraseña debe tener entre 12 y 72 bytes.'); }
@@ -58,6 +67,7 @@ final class Users
                 $q->execute([$username,$name,$hash,$role,(int)$active,$id,(int)($input['version'] ?? 0)]);
                 if ($q->rowCount()!==1) { throw new RuntimeException('Usuario modificado en otra pestaña. Recarga.',409); }
             }
+            if ($this->hasEmail()) { $this->db->prepare('UPDATE erp_users SET email=? WHERE id=?')->execute([$email,$id]); }
         } catch (\PDOException $e) { if ($e->getCode()==='23000') { throw new InvalidArgumentException('Ese nombre de usuario ya existe.'); } throw $e; }
         $row=$this->get($id);unset($row['password_hash'],$row['session_version']);return $row;
     }
