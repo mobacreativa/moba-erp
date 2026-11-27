@@ -56,3 +56,13 @@ Cada pedido nuevo de la tienda (evento «Creación de pedido») crea una orden d
 4. En Shopify, pulsar «Enviar notificación de prueba» junto al webhook. Debe aparecer en Flujo de trabajo una orden «Shopify #…» de prueba; después eliminarla con «Eliminar orden».
 
 Si la clave no coincide, el ERP rechaza el aviso (401). Si falta la configuración o el usuario no es válido, responde con error y Shopify reintenta el envío durante unas horas; el motivo queda en el log de errores de PHP.
+
+## Avisos por correo
+
+Cuando alguien asigna (o reasigna) desde el ERP una orden de trabajo o una tarea general a otro usuario, este recibe un correo desde `noreply@mobacreativa.com` con el título, la fecha de entrega estimada, los productos (sin precios ni datos del cliente) y el enlace al ERP. No se envía si uno se asigna algo a sí mismo ni para las órdenes que crea Shopify. Si el envío falla, la orden o tarea se guarda igualmente y el motivo queda en el log de PHP.
+
+1. Antes de usarlo, exportar la base de datos con phpMyAdmin e importar `database/004_user_email.sql` (añade la columna `email` a los usuarios; se puede importar más de una vez). Hasta entonces el ERP funciona igual, pero no deja guardar correos.
+2. En Configuración general > Usuarios, añadir el correo electrónico de cada usuario.
+3. Opcional, en `config/local.php`: `'admin_email' => 'correo@mobacreativa.com',` para que el administrador principal también reciba avisos de tareas; y `'mail' => ['enabled' => false],` para desactivar todos los envíos.
+
+Los correos salen con `mail()` del hosting, que firma con el SPF y DKIM del dominio en cPanel. Si alguno llega a spam, revisar en cPanel > Email Deliverability que mobacreativa.com aparece como válido.

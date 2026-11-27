@@ -8,6 +8,8 @@ require_once __DIR__.'/Records.php';
 
 require_once __DIR__.'/Quotes.php';
 
+require_once __DIR__.'/Mailer.php';
+require_once __DIR__.'/Notifier.php';
 require_once __DIR__.'/WorkOrders.php';
 require_once __DIR__.'/GeneralTasks.php';
 require_once __DIR__.'/Accounting.php';
@@ -24,10 +26,11 @@ try {
 
     $quotes = new \Moba\Quotes($db,$records);
 
-    $orders = new \Moba\WorkOrders($records,$users,$db);
+    $notifier = new \Moba\Notifier($users,new \Moba\Mailer($config),$config);
+    $orders = new \Moba\WorkOrders($records,$users,$db,$notifier);
 
     $reader=new \Moba\InvoiceReader($records,$config['invoice_reader']??[],dirname(__DIR__).'/storage/invoices');
-    $tasks = new \Moba\Tasks($records,$users,dirname(__DIR__).'/storage/task-files');
+    $tasks = new \Moba\Tasks($records,$users,dirname(__DIR__).'/storage/task-files',$notifier);
     $action = field($_GET,'api');
 
     if (!str_starts_with($action,'team_')) { \Moba\Users::allow($actor,['admin','sales']); }

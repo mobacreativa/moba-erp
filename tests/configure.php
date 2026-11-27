@@ -11,6 +11,7 @@ $config = [
     'admin_username' => 'ci-admin',
     'admin_password_hash' => password_hash('ci-password-only', PASSWORD_DEFAULT),
     'secure_cookie' => false,
+    'mail' => ['enabled' => false],
     'shopify' => ['webhook_secret' => 'ci-shopify-secret-only', 'assignee_username' => 'ci-shopify-worker', 'shop_domain' => 'ci-test.myshopify.com'],
 ];
 file_put_contents($path, "<?php\nreturn " . var_export($config, true) . ";\n");

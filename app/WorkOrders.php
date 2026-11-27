@@ -4,7 +4,7 @@ namespace Moba;
 use InvalidArgumentException;
 final class WorkOrders
 {
-    public function __construct(private Records $records,private Users $users,private ?\PDO $db=null) {}
+    public function __construct(private Records $records,private Users $users,private ?\PDO $db=null,private ?Notifier $notifier=null) {}
     public function all(array $actor,bool $deleted=false): array {
         if ($deleted && $actor['role']==='production') { return []; }
         return array_values(array_filter($this->records->all('work_order'),fn($o)=>(bool)($o['deleted']??false)===$deleted && ($actor['role']!=='production' || (int)$o['assignee_id']===(int)$actor['id'])));
@@ -62,7 +62,9 @@ final class WorkOrders
             if (array_key_exists($key,$extra)) { $doc[$key]=(string)$extra[$key]; }
             elseif (isset($old[$key])) { $doc[$key]=$old[$key]; }
         }
-        return $this->records->save('work_order',$doc,$id,(int)($input['version'] ?? 0));
+        $saved=$this->records->save('work_order',$doc,$id,(int)($input['version'] ?? 0));
+        if ($this->notifier && Notifier::shouldNotify($old,$saved,$actor)) { $this->notifier->order($saved,$actor); }
+        return $saved;
     }
     /** Cambia solo la fecha de entrega estimada (vacía = sin fecha). */
     public function due(array $input,array $actor): array {
